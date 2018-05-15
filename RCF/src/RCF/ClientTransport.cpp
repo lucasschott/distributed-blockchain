@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,7 +19,6 @@
 #include <RCF/ClientTransport.hpp>
 
 #include <RCF/Asio.hpp>
-#include <RCF/ClientProgress.hpp>
 #include <RCF/ClientStub.hpp>
 #include <RCF/Exception.hpp>
 #include <RCF/ServerTransport.hpp>
@@ -45,14 +44,19 @@ namespace RCF {
     {
     }
 
-    void ClientTransport::setClientProgressPtr(ClientProgressPtr clientProgressPtr)
-    {
-        mClientProgressPtr = clientProgressPtr;
-    }
-
     bool ClientTransport::isConnected()
     {
         return true;
+    }
+
+    void ClientTransport::setMaxMessageLength(std::size_t maxMessageLength)
+    {
+        setMaxIncomingMessageLength(maxMessageLength);
+    }
+
+    std::size_t ClientTransport::getMaxMessageLength() const
+    {
+        return getMaxIncomingMessageLength();
     }
 
     void ClientTransport::setMaxIncomingMessageLength(
@@ -86,12 +90,12 @@ namespace RCF {
         return mLastResponseSize;
     }
 
-    std::uint64_t ClientTransport::getRunningTotalBytesSent()
+    boost::uint64_t ClientTransport::getRunningTotalBytesSent()
     {
         return mRunningTotalBytesSent;
     }
 
-    std::uint64_t ClientTransport::getRunningTotalBytesReceived()
+    boost::uint64_t ClientTransport::getRunningTotalBytesReceived()
     {
         return mRunningTotalBytesReceived;
     }
@@ -100,12 +104,6 @@ namespace RCF {
     {
         mRunningTotalBytesSent = 0;
         mRunningTotalBytesReceived = 0;
-    }
-
-    void ClientTransport::getWireFilters(
-        std::vector<FilterPtr> &        filters)
-    {
-        filters.clear();
     }
 
     void ClientTransportCallback::setAsyncDispatcher(RcfServer & server)

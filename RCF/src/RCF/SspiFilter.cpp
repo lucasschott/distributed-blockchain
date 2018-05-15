@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,12 +11,14 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/SspiFilter.hpp>
+
+#include <boost/multi_index/detail/scope_guard.hpp>
 
 #include <RCF/AsioServerTransport.hpp>
 #include <RCF/ClientStub.hpp>
@@ -30,7 +32,6 @@
 #include <RCF/ThreadLocalData.hpp>
 #include <RCF/Tools.hpp>
 #include <RCF/Win32Username.hpp>
-#include <RCF/Log.hpp>
 
 #include <tchar.h>
 
@@ -46,7 +47,73 @@ typedef unsigned char UTCHAR;
 
 #endif
 
+// spelling mistake in mingw headers!
+#if defined(__MINGW32__) && __GNUC__ == 3 && __GNUC_MINOR__ <= 2
+#define cbMaxSignature cbMaxSIgnature
+#endif
+
+// missing stuff in mingw headers
+#ifdef __MINGW32__
+#ifndef SEC_WINNT_AUTH_IDENTITY_VERSION
+#define SEC_WINNT_AUTH_IDENTITY_VERSION 0x200
+
+#ifndef SEC_WINNT_AUTH_IDENTITY_ANSI
+#define SEC_WINNT_AUTH_IDENTITY_ANSI    0x1
+#endif
+
+#ifndef SEC_WINNT_AUTH_IDENTITY_UNICODE
+#define SEC_WINNT_AUTH_IDENTITY_UNICODE 0x2
+#endif
+
+typedef struct _SEC_WINNT_AUTH_IDENTITY_EXW {
+    unsigned long Version;
+    unsigned long Length;
+    unsigned short SEC_FAR *User;
+    unsigned long UserLength;
+    unsigned short SEC_FAR *Domain;
+    unsigned long DomainLength;
+    unsigned short SEC_FAR *Password;
+    unsigned long PasswordLength;
+    unsigned long Flags;
+    unsigned short SEC_FAR * PackageList;
+    unsigned long PackageListLength;
+} SEC_WINNT_AUTH_IDENTITY_EXW, *PSEC_WINNT_AUTH_IDENTITY_EXW;
+
+// end_ntifs
+
+typedef struct _SEC_WINNT_AUTH_IDENTITY_EXA {
+    unsigned long Version;
+    unsigned long Length;
+    unsigned char SEC_FAR *User;
+    unsigned long UserLength;
+    unsigned char SEC_FAR *Domain;
+    unsigned long DomainLength;
+    unsigned char SEC_FAR *Password;
+    unsigned long PasswordLength;
+    unsigned long Flags;
+    unsigned char SEC_FAR * PackageList;
+    unsigned long PackageListLength;
+} SEC_WINNT_AUTH_IDENTITY_EXA, *PSEC_WINNT_AUTH_IDENTITY_EXA;
+
+#ifdef UNICODE
+#define SEC_WINNT_AUTH_IDENTITY_EX  SEC_WINNT_AUTH_IDENTITY_EXW    // ntifs
+#define PSEC_WINNT_AUTH_IDENTITY_EX PSEC_WINNT_AUTH_IDENTITY_EXW   // ntifs
+#else
+#define SEC_WINNT_AUTH_IDENTITY_EX  SEC_WINNT_AUTH_IDENTITY_EXA
+#endif
+
+// begin_ntifs
+#endif // SEC_WINNT_AUTH_IDENTITY_VERSION      
+
+#define SP_PROT_NONE                    0
+
+#endif // __MINGW__
+
 #include <sspi.h>
+
+#if defined(__MINGW32__) && (!defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0500)
+#error The EXTENDED_NAME_FORMAT enum is required, and is only available if _WIN32_WINNT >= 0x500.
+#endif
 
 namespace RCF {
 
@@ -188,7 +255,7 @@ namespace RCF {
         mPkgInfo.Comment = NULL;
 
         RCF_ASSERT(pClientStub);
-        tstring usernameAndDomain = pClientStub->getUserName();
+        tstring usernameAndDomain = pClientStub->getUsername();
         
         tstring userName = usernameAndDomain;
         tstring domain = RCF_T("");
@@ -227,7 +294,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK || status == SEC_E_INVALID_HANDLE,
-                Exception(RcfError_Sspi, "FreeCredentialsHandle()", osError(status)));
+                FilterException(
+                    _RcfError_Sspi("FreeCredentialsHandle()"),
+                    status,
+                    RcfSubsystem_Os));
         }
 
         if (mPkgInfo.Name)
@@ -253,11 +323,12 @@ namespace RCF {
         {
             SECURITY_STATUS status = 0;       
             status = getSft()->DeleteSecurityContext(&mContext);
-
             RCF_VERIFY(
                 status == SEC_E_OK || status == SEC_E_INVALID_HANDLE,
-                Exception(RcfError_Sspi, "DeleteSecurityContext()", osError(status)));
-            
+                FilterException(
+                    _RcfError_Sspi("DeleteSecurityContext()"),
+                    status,
+                    RcfSubsystem_Os));
             mHaveContext = false;
         }
 
@@ -292,7 +363,7 @@ namespace RCF {
             if (pClientStub)
             {
                 ClientTransport & clientTransport = pClientStub->getTransport();
-                mMaxMessageLength = clientTransport.getMaxIncomingMessageLength();
+                mMaxMessageLength = clientTransport.getMaxMessageLength();
             }
         }
 
@@ -312,7 +383,7 @@ namespace RCF {
             }
             else
             {
-                RCF_ASSERT(mReadBufferPos == mReadBufferLen);
+                RCF_ASSERT_EQ(mReadBufferPos , mReadBufferLen);
 
                 if (mReadBufferVectorPtr)
                 {
@@ -356,7 +427,7 @@ namespace RCF {
             if (pClientStub)
             {
                 ClientTransport & clientTransport = pClientStub->getTransport();
-                mMaxMessageLength = clientTransport.getMaxIncomingMessageLength();
+                mMaxMessageLength = clientTransport.getMaxMessageLength();
             }
         }
 
@@ -435,11 +506,12 @@ namespace RCF {
         {
             RCF_ASSERT(
                     byteBuffer.isEmpty()
-                ||  mReadBuffer + mReadBufferPos == byteBuffer.getPtr());
+                ||  mReadBuffer + mReadBufferPos == byteBuffer.getPtr())
+                (mReadBuffer)(mReadBufferPos)(byteBuffer.getPtr());
 
             mReadBufferPos += byteBuffer.getLength();
 
-            RCF_ASSERT(mReadBufferPos <= mReadBufferLen);
+            RCF_ASSERT_LTEQ(mReadBufferPos , mReadBufferLen);
 
             if ( mSchannel && mServer && !mProtocolChecked && mReadBufferPos >= 1 )
             {
@@ -447,7 +519,7 @@ namespace RCF {
                 unsigned char firstByte = mReadBuffer[0];
                 if ( firstByte != '\x16' && firstByte != (unsigned char) '\x80')
                 {
-                    Exception e(RcfError_NotSslHandshake);
+                    Exception e(_RcfError_NotSslHandshake());
                     RCF_THROW(e);
                 }
                 mProtocolChecked = true;
@@ -485,7 +557,7 @@ namespace RCF {
         mByteBuffers.resize(0);
         mWriteBufferPos += bytesTransferred;
        
-        RCF_ASSERT(mWriteBufferPos <= mWriteBufferLen);
+        RCF_ASSERT_LTEQ(mWriteBufferPos , mWriteBufferLen);
 
         handleEvent(WriteCompleted);
     }
@@ -622,7 +694,7 @@ namespace RCF {
 
     void SspiFilter::readBuffer()
     {
-        RCF_ASSERT(mReadBufferPos <= mReadBufferLen);
+        RCF_ASSERT_LTEQ(mReadBufferPos, mReadBufferLen);
         mPostState = Reading;
         mTempByteBuffer = ByteBuffer(mReadByteBuffer, mReadBufferPos);
         mpPostFilter->read(mTempByteBuffer, mReadBufferLen-mReadBufferPos);
@@ -630,7 +702,7 @@ namespace RCF {
 
     void SspiFilter::writeBuffer()
     {
-        RCF_ASSERT(mWriteBufferPos <= mWriteBufferLen);
+        RCF_ASSERT_LTEQ(mWriteBufferPos, mWriteBufferLen);
         mPostState = Writing;
         mByteBuffers.resize(0);
         mByteBuffers.push_back( ByteBuffer(mWriteByteBuffer, mWriteBufferPos));
@@ -644,13 +716,13 @@ namespace RCF {
             return true;
         }
 
-        RCF_ASSERT(mReadBufferPos <= mReadBufferLen);
+        RCF_ASSERT_LTEQ(mReadBufferPos, mReadBufferLen);
 
         if (mReadBufferPos == mReadBufferLen && mReadBufferLen == 4)
         {
             // Got the 4 byte length field, now read the rest of the block.
-            static_assert( sizeof(unsigned int) == 4, "Invalid data type size assumption." );
-            static_assert( sizeof(DWORD) == 4, "Invalid data type size assumption." );
+            BOOST_STATIC_ASSERT( sizeof(unsigned int) == 4 );
+            BOOST_STATIC_ASSERT( sizeof(DWORD) == 4 );
 
             unsigned int len = * (unsigned int *) mReadBuffer;
             bool integrity = (len & (1<<30)) ? true : false;
@@ -662,10 +734,12 @@ namespace RCF {
             if (mMaxMessageLength && len > mMaxMessageLength)
             {
                 int rcfError = mServer ? 
-                    RcfError_ServerMessageLength_Id :
-                    RcfError_ClientMessageLength_Id;
+                    RcfError_ServerMessageLength : 
+                    RcfError_ClientMessageLength;
 
-                RCF_THROW(Exception(ErrorMsg(rcfError)));
+                Error err(rcfError);
+                Exception e(err);
+                RCF_THROW(e)(mMaxMessageLength)(len);
             }
 
             * (unsigned int *) mReadBuffer = len;
@@ -701,7 +775,7 @@ namespace RCF {
 
     bool SspiFilter::completeWriteBlock()
     {
-        RCF_ASSERT(mWriteBufferPos <= mWriteBufferLen);
+        RCF_ASSERT_LTEQ(mWriteBufferPos,  mWriteBufferLen);
 
         return (mWriteBufferPos < mWriteBufferLen) ?
             writeBuffer(), false :
@@ -739,7 +813,7 @@ namespace RCF {
         mReadBufferLen = mReadByteBuffer.getLength();
         mReadBufferLen = (mReadBufferLen == 1) ? 0 : mReadBufferLen;
 
-        RCF_ASSERT(mReadBufferLen == newSize);
+        RCF_ASSERT_EQ(mReadBufferLen , newSize);
     }
 
     void SspiFilter::resizeWriteBuffer(std::size_t newSize)
@@ -757,7 +831,7 @@ namespace RCF {
         mWriteBufferPos = 0;
         mWriteBufferLen = mWriteByteBuffer.getLength();
         mWriteBufferLen = mWriteBufferLen == 1 ? 0 : mWriteBufferLen;
-        RCF_ASSERT(mWriteBufferLen == newSize);
+        RCF_ASSERT_EQ(mWriteBufferLen , newSize);
     }
 
     void SspiFilter::shiftReadBuffer()
@@ -788,7 +862,7 @@ namespace RCF {
     {
         // encrypt the pre buffer to the write buffer
 
-        RCF_ASSERT(mContextState == AuthOkAck);
+        RCF_ASSERT_EQ(mContextState , AuthOkAck);
 
         if (mQop == Integrity)
         {
@@ -832,13 +906,16 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiEncrypt, "MakeSignature()", osError(status)));
+                FilterException(
+                    _RcfError_SspiEncrypt("MakeSignature()"),
+                    status,
+                    RcfSubsystem_Os))(status);
 
             cbSignature                = rgsb[1].cbBuffer;
             cbPacket                = cbMsgLength + cbMsg + cbSignature;
             resizeWriteBuffer(cbPacketLength + cbPacket);
             DWORD encodedLength        = cbPacket;
-            RCF_ASSERT(encodedLength < (1<<30));
+            RCF_ASSERT_LT(encodedLength , (1<<30));
             encodedLength            = encodedLength | (1<<30);
             * (DWORD*) mWriteBuffer = encodedLength;
         }
@@ -884,20 +961,23 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiEncrypt, "EncryptMessage()", osError(status)));
+                FilterException(
+                    _RcfError_SspiEncrypt("EncryptMessage()"),
+                    status,
+                    RcfSubsystem_Os));
 
             cbTrailer               = rgsb[1].cbBuffer;
             cbPacket                = cbMsgLength + cbMsg + cbTrailer;
             resizeWriteBuffer(cbPacketLength + cbPacket);
             DWORD encodedLength     = cbPacket;
-            RCF_ASSERT(encodedLength < (1<<30));
+            RCF_ASSERT_LT(encodedLength , (1<<30));
             encodedLength           = encodedLength | (1<<31);
             * (DWORD*) mWriteBuffer = encodedLength;
         }
         else
         {
-            RCF_ASSERT(mQop == None);
-            RCF_ASSERT(mWriteByteBufferOrig.getLength() < std::size_t(1) << 31 );
+            RCF_ASSERT_EQ(mQop , None);
+            RCF_ASSERT_LT(mWriteByteBufferOrig.getLength() , std::size_t(1) << 31 );
 
             resizeWriteBuffer(mWriteByteBufferOrig.getLength()+4);
             memcpy(
@@ -915,7 +995,7 @@ namespace RCF {
     {
         // decrypt read buffer in place
 
-        RCF_ASSERT(mContextState == AuthOkAck);
+        RCF_ASSERT_EQ(mContextState , AuthOkAck);
 
         if (mQop == Integrity)
         {
@@ -925,14 +1005,18 @@ namespace RCF {
 
             RCF_VERIFY(
                 cbPacket <= mReadBufferLen, 
-                Exception(RcfError_SspiLengthField, cbPacket, mReadBufferLen));
+                Exception(_RcfError_SspiLengthField(
+                    cbPacket, 
+                    static_cast<int>(mReadBufferLen))));
 
             DWORD cbMsgLength       = 4;
             DWORD cbMsg             = *(DWORD*) pMsg;
 
             RCF_VERIFY(
                 cbMsg <= mReadBufferLen, 
-                Exception(RcfError_SspiLengthField, cbMsg, mReadBufferLen));
+                Exception(_RcfError_SspiLengthField(
+                    cbMsg, 
+                    static_cast<int>(mReadBufferLen))));
 
             DWORD cbSignature       = cbPacket - cbMsgLength - cbMsg;
             SecBuffer rgsb[2]       = {0,0};
@@ -955,7 +1039,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiDecrypt, "VerifySignature()", osError(status)));
+                FilterException(
+                    _RcfError_SspiDecrypt("VerifySignature()"),
+                    status,
+                    RcfSubsystem_Os));
 
             resizeReadBuffer(cbPacketLength + cbMsgLength + cbMsg);
             mReadBufferPos          = cbPacketLength + cbMsgLength;
@@ -968,14 +1055,18 @@ namespace RCF {
 
             RCF_VERIFY(
                 cbPacket <= mReadBufferLen, 
-                Exception(RcfError_SspiLengthField, cbPacket, mReadBufferLen));
+                Exception(_RcfError_SspiLengthField(
+                    cbPacket, 
+                    static_cast<int>(mReadBufferLen))));
 
             DWORD cbMsgLength       = 4;
             DWORD cbMsg             = *(DWORD*) pMsg;
 
             RCF_VERIFY(
                 cbMsg <= mReadBufferLen, 
-                Exception(RcfError_SspiLengthField, cbMsg, mReadBufferLen));
+                Exception(_RcfError_SspiLengthField(
+                    cbMsg, 
+                    static_cast<int>(mReadBufferLen))));
 
             DWORD cbTrailer         = (cbPacket - cbMsgLength) - cbMsg;
             SecBuffer rgsb[2]       = {0,0};
@@ -999,14 +1090,17 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiDecrypt, "DecryptMessage()", osError(status)));
+                FilterException(
+                    _RcfError_SspiDecrypt("DecryptMessage()"),
+                    status,
+                    RcfSubsystem_Os));
 
             resizeReadBuffer(cbPacketLength + cbMsgLength + cbMsg);
             mReadBufferPos          = cbPacketLength + cbMsgLength;
         }
         else
         {
-            RCF_ASSERT(mQop == None);
+            RCF_ASSERT_EQ(mQop , None);
             mReadBufferPos = 4;
         }
 
@@ -1036,13 +1130,13 @@ namespace RCF {
                 ||  filterId == RcfFilter_SspiKerberos 
                 ||  filterId == RcfFilter_SspiNegotiate)
             {
-                mSspiFilterPtr = std::static_pointer_cast<SspiFilter>(filters[i]);
+                mSspiFilterPtr = boost::static_pointer_cast<SspiFilter>(filters[i]);
             }
         }
 
         if (!mSspiFilterPtr)
         {
-            RCF_THROW( Exception(RcfError_SspiImpersonateNoSspi) );
+            RCF_THROW( Exception(_RcfError_SspiImpersonateNoSspi()) );
         }
     }
 
@@ -1062,7 +1156,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiImpersonation, "ImpersonateSecurityContext()", osError(status)));
+                FilterException(
+                    _RcfError_SspiImpersonation("ImpersonateSecurityContext()"), 
+                    status, 
+                    RcfSubsystem_Os));
 
             return true;
         }
@@ -1081,7 +1178,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 status == SEC_E_OK,
-                Exception(RcfError_SspiImpersonation, "RevertSecurityContext()", osError(status)));
+                FilterException(
+                    _RcfError_SspiImpersonation("RevertSecurityContext()"), 
+                    status, 
+                    RcfSubsystem_Os));
         }
     }
    
@@ -1114,7 +1214,9 @@ namespace RCF {
             mReadBufferLen == 0 || mReadBufferLen > 4)
             (mReadBufferLen);
 
-        RCF_ASSERT(!mServer || (mServer && mReadBufferLen > 4));
+        RCF_ASSERT(
+            !mServer || (mServer && mReadBufferLen > 4))
+            (mServer)(mReadBufferLen);
 
         SecBufferDesc ibd       = {0};
         SecBuffer ib            = {0};
@@ -1185,7 +1287,7 @@ namespace RCF {
             {
                 resizeWriteBuffer(4+4+4);
                 *(DWORD*) mWriteBuffer = 8;
-                *(DWORD*)(mWriteBuffer + 4) = RcfError_Ok_Id;
+                *(DWORD*) (mWriteBuffer+4) = RcfError_Ok;
                 *(DWORD*) (mWriteBuffer+8) = 0;
             }
 
@@ -1200,12 +1302,12 @@ namespace RCF {
         {
             // authorization failed, send a special block of our own to notify client
 
-            RCF_LOG_2() << "SSPI handshake failed. Error: " + RCF::osError(status);
+            RCF_LOG_2() << "SSPI handshake failed. Error: " + RCF::getOsErrorString(status);
 
             mContextState = AuthFailed;
             resizeWriteBuffer(4+4+4);
             *(DWORD*) mWriteBuffer = 8;
-            *(DWORD*) (mWriteBuffer+4) = RcfError_SspiAuthFailServer_Id;
+            *(DWORD*) (mWriteBuffer+4) = RcfError_SspiAuthFailServer;
             *(DWORD*) (mWriteBuffer+8) = status;
 
             RcfSession * pSession = getCurrentRcfSessionPtr();
@@ -1230,7 +1332,7 @@ namespace RCF {
         case WriteIssued:
 
             // read first block from client
-            RCF_ASSERT(mEvent == ReadIssued);
+            RCF_ASSERT_EQ(mEvent , ReadIssued);
             resizeReadBuffer(mReadAheadChunkSize);
             readBuffer();
             break;
@@ -1261,7 +1363,7 @@ namespace RCF {
 
             case AuthFailed:
                 {
-                    Exception e(RcfError_SspiAuthFailServer);
+                    FilterException e(_RcfError_SspiAuthFailServer());
                     RCF_THROW(e);
                 }
                 break;
@@ -1292,7 +1394,7 @@ namespace RCF {
             {
                 DWORD rcfErr = *(DWORD*) &mReadBuffer[4];
                 DWORD osErr = *(DWORD*) &mReadBuffer[8];
-                if (rcfErr == RcfError_Ok_Id )
+                if (rcfErr == RcfError_Ok)
                 {
                     mContextState = AuthOkAck;
                     resumeUserIo();
@@ -1300,13 +1402,13 @@ namespace RCF {
                 }
                 else
                 {
-                    RCF_UNUSED_VARIABLE(osErr);
-                    RCF_THROW(RemoteException(ErrorMsg(rcfErr)));
+                    RemoteException e( Error(rcfErr), osErr, RcfSubsystem_Os);
+                    RCF_THROW(e);
                 }
             }
             else
             {
-                Exception e(RcfError_SspiAuthFailServer);
+                Exception e(_RcfError_SspiAuthFailServer());
                 RCF_THROW(e);
             }
         }
@@ -1325,9 +1427,13 @@ namespace RCF {
         obd.ulVersion           = SECBUFFER_VERSION;
         obd.pBuffers            = &ob;
 
-        RCF_ASSERT(mReadBufferLen == 0 || mReadBufferLen > 4);
+        RCF_ASSERT(
+            mReadBufferLen == 0 || mReadBufferLen > 4)
+            (mReadBufferLen);
 
-        RCF_ASSERT(!mServer || (mServer && mReadBufferLen > 4));
+        RCF_ASSERT(
+            !mServer || (mServer && mReadBufferLen > 4))
+            (mServer)(mReadBufferLen);
 
         SecBuffer ib            = {0};
         SecBufferDesc ibd       = {0};
@@ -1395,11 +1501,14 @@ namespace RCF {
 
             RCF_VERIFY(
                 mContextState != AuthFailed,
-                Exception(RcfError_SspiAuthFailClient, osError(status)));
+                Exception(
+                    _RcfError_SspiAuthFailClient(),
+                    status,
+                    RcfSubsystem_Os,
+                    "InitializeSecurityContext() failed"))(status);
 
             resizeWriteBuffer(cbPacketLength + cbPacket);
             memcpy(mWriteBuffer, pPacket, cbPacketLength + cbPacket);
-
             return true;
         }
         else
@@ -1524,8 +1633,12 @@ namespace RCF {
 
         if (status != SEC_E_OK)
         {
-            Exception e(RcfError_Sspi, "AcquireCredentialsHandle()", osError(status));
-            RCF_THROW(e);
+            FilterException e(
+                _RcfError_Sspi("AcquireCredentialsHandle()"), 
+                status, 
+                RcfSubsystem_Os);
+
+            RCF_THROW(e)(mPkgInfo.Name)(userName)(domain);
         }
 
         mHaveCredentials = true;
@@ -1552,8 +1665,12 @@ namespace RCF {
 
         if ( status != SEC_E_OK )
         {
-            Exception e(RcfError_Sspi, "QuerySecurityPackageInfo()", osError(status));
-            RCF_THROW(e);
+            FilterException e(
+                _RcfError_Sspi("QuerySecurityPackageInfo()"), 
+                status, 
+                RcfSubsystem_Os);
+
+            RCF_THROW(e)(mPackageName.c_str());
         }
 
 #ifdef _MSC_VER
@@ -1598,7 +1715,7 @@ namespace RCF {
             ServerTransport & serverTransport = 
                 pRcfSession->getNetworkSession().getServerTransport();
 
-            mMaxMessageLength = serverTransport.getMaxIncomingMessageLength();
+            mMaxMessageLength = serverTransport.getMaxMessageLength();
         }
     }
 
@@ -1768,7 +1885,12 @@ namespace RCF {
         if (ghProvider == NULL)
         {
             int err = GetLastError();
-            Exception e(RcfError_SspiInit, "Unable to load security.dll.", osError(err));
+
+            FilterException e(
+                _RcfError_SspiInit("LoadLibrary() with \"security.dll\""),
+                err,
+                RcfSubsystem_Os);
+
             RCF_THROW(e);
         }
 
@@ -1780,7 +1902,12 @@ namespace RCF {
         if (InitSecurityInterface == NULL)
         {
             int err = GetLastError();
-            Exception e(RcfError_SspiInit, "Unable to load function \"InitSecurityInterface\".", osError(err));
+
+            FilterException e(
+                _RcfError_SspiInit("GetProcAddress() with \"InitSecurityInterface\""), 
+                err, 
+                RcfSubsystem_Os);
+
             RCF_THROW(e);
         }
 
@@ -1788,7 +1915,12 @@ namespace RCF {
         if (gpSecurityInterface == NULL)
         {
             int err = GetLastError();
-            Exception e(RcfError_SspiInit, "InitSecurityInterface() failed.", err);
+            
+            FilterException e(
+                _RcfError_SspiInit("InitSecurityInterface()"), 
+                err, 
+                RcfSubsystem_Os);
+
             RCF_THROW(e);
         }
     }

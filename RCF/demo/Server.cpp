@@ -1,7 +1,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <iterator>
 #include <string>
 #include <vector>
 
@@ -24,15 +23,11 @@ public:
 
 int main()
 {
-    RCF::RcfInit rcfInit;
+    RCF::RcfInitDeinit rcfInit;
 
-	std::string networkInterface = "0.0.0.0";
-	int port = 50001;
-	std::cout << "Starting server on " << networkInterface << ":" << port << "." << std::endl;
-
-    // Start a TCP server, and expose MyServiceImpl.
+    // Start a TCP server on port 50001, and expose MyServiceImpl.
     MyServiceImpl myServiceImpl;
-    RCF::RcfServer server( RCF::TcpEndpoint(networkInterface, port) );
+    RCF::RcfServer server( RCF::TcpEndpoint("0.0.0.0", 50001) );
     server.bind<MyService>(myServiceImpl);
     server.start();
 

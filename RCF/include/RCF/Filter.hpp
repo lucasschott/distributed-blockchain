@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,8 +21,13 @@
 
 #include <string>
 #include <vector>
-#include <memory>
 
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <RCF/ByteBuffer.hpp>
+#include <RCF/Enums.hpp>
 #include <RCF/Export.hpp>
 
 namespace RCF {
@@ -42,9 +47,7 @@ namespace RCF {
 
     class Filter;
 
-    class ByteBuffer;
-
-    typedef std::shared_ptr<Filter> FilterPtr;
+    typedef boost::shared_ptr<Filter> FilterPtr;
 
     class RCF_EXPORT Filter
     {
@@ -97,6 +100,10 @@ namespace RCF {
         virtual int getFilterId() const;
     };
    
+    typedef boost::shared_ptr<Filter>                       FilterPtr;
+    typedef std::vector<FilterPtr>                          VectorFilter;
+    typedef boost::shared_ptr< std::vector<FilterPtr> >     VectorFilterPtr;
+
     class RcfServer;
 
     class FilterFactory
@@ -110,7 +117,7 @@ namespace RCF {
         virtual int getFilterId() = 0;
     };
 
-    typedef std::shared_ptr<FilterFactory> FilterFactoryPtr;
+    typedef boost::shared_ptr<FilterFactory> FilterFactoryPtr;
 
     RCF_EXPORT void connectFilters(const std::vector<FilterPtr> &filters);
 

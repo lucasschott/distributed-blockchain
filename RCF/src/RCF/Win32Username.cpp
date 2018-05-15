@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -27,8 +27,6 @@
 #include <secext.h>
 
 #include <RCF/Exception.hpp>
-#include <RCF/MemStream.hpp>
-#include <RCF/Tools.hpp>
 
 namespace RCF {
 
@@ -72,11 +70,12 @@ namespace RCF {
         vec.resize(len);
         ret = GetUserName(&vec[0], &len);
         err = GetLastError();
-
         RCF_VERIFY(
             ret,
-            Exception(RcfError_Win32ApiError, "GetUserName()", osError(err)));
-
+            Exception(
+                _RcfError_Win32ApiError("GetUserName()"),
+                err,
+                RcfSubsystem_Os));
         return tstring(&vec[0]);
     }
 
@@ -92,7 +91,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 ok,
-                Exception(RcfError_Win32ApiError, "GetUserNameEx()", osError(dwErr)));
+                Exception(
+                _RcfError_Win32ApiError("GetUserNameEx()"),
+                dwErr,
+                RcfSubsystem_Os));
 
             tstring domainAndUser(&vec[0]);
             tstring domain = domainAndUser.substr(
@@ -109,11 +111,12 @@ namespace RCF {
             // Windows privileges aren't appropriately enabled. OpenThreadToken()
             // fails with "Access denied".
 
+            using namespace boost::multi_index::detail;
+
             // obtain current token
             HANDLE hToken;
             BOOL ok = OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, FALSE, &hToken);
             DWORD dwErr1 = GetLastError();
-            RCF_UNUSED_VARIABLE(dwErr1);
             DWORD dwErr2 = 0;
             if (!ok)
             {
@@ -123,9 +126,13 @@ namespace RCF {
 
             RCF_VERIFY(
                 ok,
-                Exception(RcfError_Win32ApiError, "OpenProcessToken()", osError(dwErr2)));
+                Exception(
+                    _RcfError_Win32ApiError("OpenProcessToken()"),
+                    dwErr2,
+                    RcfSubsystem_Os))(dwErr1);
 
-            ScopeGuard guard([&]() { CloseHandle(hToken); });
+            scope_guard guard = make_guard(&CloseHandle, hToken);
+            RCF_UNUSED_VARIABLE(guard);
 
             PTOKEN_USER ptiUser     = NULL;
             DWORD       cbti        = 0;
@@ -159,7 +166,10 @@ namespace RCF {
 
             RCF_VERIFY(
                 ok,
-                Exception(RcfError_Win32ApiError, "LookupAccountSid()", osError(err)));
+                Exception(
+                    _RcfError_Win32ApiError("LookupAccountSid()"),
+                    err,
+                    RcfSubsystem_Os));
 
             return szDomain;
         }

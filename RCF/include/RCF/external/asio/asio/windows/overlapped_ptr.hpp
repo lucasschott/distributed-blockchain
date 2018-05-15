@@ -2,7 +2,7 @@
 // windows/overlapped_ptr.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -50,9 +50,8 @@ public:
 
   /// Construct an overlapped_ptr to contain the specified handler.
   template <typename Handler>
-  explicit overlapped_ptr(asio::io_service& io_service,
-      ASIO_MOVE_ARG(Handler) handler)
-    : impl_(io_service, ASIO_MOVE_CAST(Handler)(handler))
+  explicit overlapped_ptr(asio::io_service& io_service, Handler handler)
+    : impl_(io_service, handler)
   {
   }
 
@@ -70,10 +69,9 @@ public:
   /// Reset to contain the specified handler, freeing any current OVERLAPPED
   /// object.
   template <typename Handler>
-  void reset(asio::io_service& io_service,
-      ASIO_MOVE_ARG(Handler) handler)
+  void reset(asio::io_service& io_service, Handler handler)
   {
-    impl_.reset(io_service, ASIO_MOVE_CAST(Handler)(handler));
+    impl_.reset(io_service, handler);
   }
 
   /// Get the contained OVERLAPPED object.

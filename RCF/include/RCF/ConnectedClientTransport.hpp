@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,13 +19,17 @@
 #ifndef INCLUDE_RCF_CONNECTIONORIENTEDCLIENTTRANSPORT_HPP
 #define INCLUDE_RCF_CONNECTIONORIENTEDCLIENTTRANSPORT_HPP
 
+#include <boost/enable_shared_from_this.hpp>
+
+#include <RCF/AmiThreadPool.hpp>
 #include <RCF/AsioBuffers.hpp>
-#include <RCF/ByteBuffer.hpp>
+#include <RCF/AsioDeadlineTimer.hpp>
+#include <RCF/Filter.hpp>
+#include <RCF/ByteOrdering.hpp>
+#include <RCF/ClientProgress.hpp>
 #include <RCF/ClientTransport.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/ReallocBuffer.hpp>
 #include <RCF/RecursionLimiter.hpp>
-#include <RCF/ThreadLibrary.hpp>
 
 namespace RCF {
 
@@ -34,13 +38,15 @@ namespace RCF {
     class ClientFilterProxy;
 
     class TcpClientTransport;
-    typedef std::shared_ptr<TcpClientTransport> TcpClientTransportPtr;
+    typedef boost::shared_ptr<TcpClientTransport> TcpClientTransportPtr;
     class TcpClientFilterProxy;
 
     class OverlappedAmi;
-    typedef std::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
+    typedef boost::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
 
-    class RCF_EXPORT ConnectedClientTransport : public ClientTransport
+    class RCF_EXPORT ConnectedClientTransport : 
+        public ClientTransport, 
+        public WithProgressCallback
     {
     public:
 
@@ -50,7 +56,7 @@ namespace RCF {
 
         void                    close();
         void                    setMaxSendSize(std::size_t maxSendSize);
-        std::size_t             getMaxSendSize();       
+        std::size_t             getMaxSendSize();
 
     private:
 
@@ -62,8 +68,6 @@ namespace RCF {
         void                    setTransportFilters(const std::vector<FilterPtr> &filters);
         void                    getTransportFilters(std::vector<FilterPtr> &filters);
         void                    connectTransportFilters();
-
-        void                    getWireFilters(std::vector<FilterPtr> &        filters);
         
         void                    connect(ClientTransportCallback &clientStub, unsigned int timeoutMs);
         void                    disconnect(unsigned int timeoutMs);
@@ -160,7 +164,7 @@ namespace RCF {
 
     public:
 
-        typedef std::shared_ptr<Lock>     LockPtr;
+        typedef boost::shared_ptr<Lock>     LockPtr;
 
         AsioDeadlineTimerPtr                mAsioTimerPtr;
 
@@ -168,10 +172,10 @@ namespace RCF {
 
     public:
 
-        void        cancel();
+        void cancel();
 
         void        setTimer(
-                        std::uint32_t timeoutMs,
+                        boost::uint32_t timeoutMs,
                         ClientTransportCallback *pClientStub);
 
         void        onTimerExpired();

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,33 +19,44 @@
 #ifndef INCLUDE_RCF_SERVEROBJECTSERVICE_HPP
 #define INCLUDE_RCF_SERVEROBJECTSERVICE_HPP
 
-#include <RCF/Any.hpp>
+#include <boost/any.hpp>
+
 #include <RCF/Export.hpp>
 #include <RCF/PeriodicTimer.hpp>
 #include <RCF/Service.hpp>
-#include <RCF/Tools.hpp>
 
 
 namespace RCF {
 
     class ServerObjectService;
-    typedef std::shared_ptr<ServerObjectService> ServerObjectServicePtr;
+    typedef boost::shared_ptr<ServerObjectService> ServerObjectServicePtr;
 
-    class RCF_EXPORT ServerObjectHolder
+    class ServerObjectHolder
     {
     public:
 
-        ServerObjectHolder();
+        ServerObjectHolder() : 
+            mTimeoutMs(0),
+            mLastTouchMs(0), 
+            mUseCount(0)
+        {
+        }
 
-        ServerObjectHolder(const Any & serverObject, std::uint32_t timeoutMs);
+        ServerObjectHolder(const boost::any & serverObject, boost::uint32_t timeoutMs) : 
+            mTimeoutMs(timeoutMs), 
+            mLastTouchMs(0), 
+            mUseCount(0),
+            mServerObject(serverObject)
+        {
+        }
 
-        std::uint32_t     mTimeoutMs;
-        std::uint32_t     mLastTouchMs;
+        boost::uint32_t     mTimeoutMs;
+        boost::uint32_t     mLastTouchMs;
         int                 mUseCount;
-        Any          mServerObject;
+        boost::any          mServerObject;
     };
     
-    class RCF_EXPORT ServerObjectService : public I_Service, Noncopyable
+    class RCF_EXPORT ServerObjectService : public I_Service, boost::noncopyable
     {
     public:
         ServerObjectService();
@@ -61,8 +72,8 @@ namespace RCF {
         RcfServer *         mpRcfServer;
         PeriodicTimer       mPeriodicTimer;
 
-        std::uint32_t     mHarvestingIntervalS;
-        std::uint32_t     mLastHarvestMs;
+        boost::uint32_t     mHarvestingIntervalS;
+        boost::uint32_t     mLastHarvestMs;
 
         Mutex               mMutex;
         ServerObjectMap     mServerObjectMap;
@@ -70,12 +81,12 @@ namespace RCF {
         
 
         template<typename T>
-        std::shared_ptr<T> getServerObjectImpl(
+        boost::shared_ptr<T> getServerObjectImpl(
             const std::string & objectKey, 
-            std::uint32_t timeoutMs, 
+            boost::uint32_t timeoutMs, 
             bool createIfDoesntExist)
         {
-            typedef std::shared_ptr<T> TPtr;
+            typedef boost::shared_ptr<T> TPtr;
 
             Lock lock(mMutex);
 
@@ -83,8 +94,10 @@ namespace RCF {
             if (iter != mServerObjectMap.end())
             {
                 ServerObjectHolder & holder = iter->second;
-                Any & a = holder.mServerObject;
-                TPtr & tPtr = a.get<TPtr>();
+                boost::any & a = holder.mServerObject;
+                TPtr * ptPtr = boost::any_cast<TPtr>(&a);
+                RCF_ASSERT(ptPtr);
+                TPtr tPtr = *ptPtr;
                 T * pt = tPtr.get();
                 RCF_ASSERT(pt);
 
@@ -92,23 +105,21 @@ namespace RCF {
                 holder.mLastTouchMs = getCurrentTimeMs();
                 RCF_ASSERT(holder.mUseCount >= 0);
                 ++holder.mUseCount;
-                using namespace std::placeholders;
-                TPtr ptr(pt, std::bind(&ServerObjectService::customDeleter, this, objectKey, _1));
+                TPtr ptr(pt, boost::bind(&ServerObjectService::customDeleter, this, objectKey, _1));
                 return ptr;
             }
             else if (createIfDoesntExist)
             {
                 T * pt = new T();
                 TPtr tPtr(pt);
-                mServerObjectMap[objectKey] = ServerObjectHolder(Any(tPtr), timeoutMs);
+                mServerObjectMap[objectKey] = ServerObjectHolder(boost::any(tPtr), timeoutMs);
                 ServerObjectHolder & holder = mServerObjectMap[objectKey];
 
                 // Return shared_ptr with custom deleter.
                 holder.mLastTouchMs = getCurrentTimeMs();
                 RCF_ASSERT(holder.mUseCount >= 0);
                 ++holder.mUseCount;
-                using namespace std::placeholders;
-                TPtr ptr(pt, std::bind(&ServerObjectService::customDeleter, this, objectKey, _1));
+                TPtr ptr(pt, boost::bind(&ServerObjectService::customDeleter, this, objectKey, _1));
                 return ptr;
             }
             else
@@ -120,16 +131,16 @@ namespace RCF {
     public:
 
         template<typename T>
-        std::shared_ptr<T> queryServerObject(
+        boost::shared_ptr<T> queryServerObject(
             const std::string & objectKey)
         {
             return getServerObjectImpl<T>(objectKey, 0, false);
         }
 
         template<typename T>
-        std::shared_ptr<T> getServerObject(
+        boost::shared_ptr<T> getServerObject(
             const std::string & objectKey, 
-            std::uint32_t timeoutMs)
+            boost::uint32_t timeoutMs)
         {
             return getServerObjectImpl<T>(objectKey, timeoutMs, true);
         }

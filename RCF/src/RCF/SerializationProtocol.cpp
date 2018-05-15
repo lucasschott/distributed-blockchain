@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -30,20 +30,22 @@ namespace RCF {
     const SerializationProtocol DefaultSerializationProtocol = Sp_BsBinary;
 #endif
 
+    const MarshalingProtocol DefaultMarshalingProtocol = Mp_Rcf;
+
     bool isSerializationProtocolSupported(int protocol)
     {
         switch (protocol)
         {
-        case 1: return Protocol< Int<1> >::getName() != "";
-        case 2: return Protocol< Int<2> >::getName() != "";
-        case 3: return Protocol< Int<3> >::getName() != "";
-        case 4: return Protocol< Int<4> >::getName() != "";
-        case 5: return Protocol< Int<5> >::getName() != "";
-        case 6: return Protocol< Int<6> >::getName() != "";
-        case 7: return Protocol< Int<7> >::getName() != "";
-        case 8: return Protocol< Int<8> >::getName() != "";
-        case 9: return Protocol< Int<9> >::getName() != "";
-        case 10: return Protocol< Int<10> >::getName() != "";
+        case 1: return Protocol< boost::mpl::int_<1> >::getName() != "";
+        case 2: return Protocol< boost::mpl::int_<2> >::getName() != "";
+        case 3: return Protocol< boost::mpl::int_<3> >::getName() != "";
+        case 4: return Protocol< boost::mpl::int_<4> >::getName() != "";
+        case 5: return Protocol< boost::mpl::int_<5> >::getName() != "";
+        case 6: return Protocol< boost::mpl::int_<6> >::getName() != "";
+        case 7: return Protocol< boost::mpl::int_<7> >::getName() != "";
+        case 8: return Protocol< boost::mpl::int_<8> >::getName() != "";
+        case 9: return Protocol< boost::mpl::int_<9> >::getName() != "";
+        case 10: return Protocol< boost::mpl::int_<10> >::getName() != "";
         default: return false;
         }
     }
@@ -52,24 +54,24 @@ namespace RCF {
     {
         switch (protocol)
         {
-        case 1: return Protocol< Int<1> >::getName();
-        case 2: return Protocol< Int<2> >::getName();
-        case 3: return Protocol< Int<3> >::getName();
-        case 4: return Protocol< Int<4> >::getName();
-        case 5: return Protocol< Int<5> >::getName();
-        case 6: return Protocol< Int<6> >::getName();
-        case 7: return Protocol< Int<7> >::getName();
-        case 8: return Protocol< Int<8> >::getName();
-        case 9: return Protocol< Int<9> >::getName();
-        case 10: return Protocol< Int<10> >::getName();
+        case 1: return Protocol< boost::mpl::int_<1> >::getName();
+        case 2: return Protocol< boost::mpl::int_<2> >::getName();
+        case 3: return Protocol< boost::mpl::int_<3> >::getName();
+        case 4: return Protocol< boost::mpl::int_<4> >::getName();
+        case 5: return Protocol< boost::mpl::int_<5> >::getName();
+        case 6: return Protocol< boost::mpl::int_<6> >::getName();
+        case 7: return Protocol< boost::mpl::int_<7> >::getName();
+        case 8: return Protocol< boost::mpl::int_<8> >::getName();
+        case 9: return Protocol< boost::mpl::int_<9> >::getName();
+        case 10: return Protocol< boost::mpl::int_<10> >::getName();
         default: return "";
         }
     }
 
     SerializationProtocolIn::SerializationProtocolIn() :
         mProtocol(DefaultSerializationProtocol),
-        mRuntimeVersion( RCF::getRuntimeVersion() ),
-        mArchiveVersion( RCF::getArchiveVersion() )
+        mRuntimeVersion( RCF::getDefaultRuntimeVersion() ),
+        mArchiveVersion( RCF::getDefaultArchiveVersion() )
     {
     }
 
@@ -137,7 +139,7 @@ namespace RCF {
         case 3: mInProtocol3.bind(mIs, archiveLength, mRuntimeVersion, mArchiveVersion, *this); break;
         case 4: mInProtocol4.bind(mIs, archiveLength, mRuntimeVersion, mArchiveVersion, *this); break;
         case 5: mInProtocol5.bind(mIs, archiveLength, mRuntimeVersion, mArchiveVersion, *this); break;
-        default: RCF_ASSERT(0);
+        default: RCF_ASSERT(0)(mProtocol);
         }
     }
 
@@ -150,7 +152,7 @@ namespace RCF {
         case 3: mInProtocol3.unbind(); break;
         case 4: mInProtocol4.unbind(); break;
         case 5: mInProtocol5.unbind(); break;
-        default: RCF_ASSERT(0);
+        default: RCF_ASSERT(0)(mProtocol);
         }
     }
 
@@ -184,7 +186,7 @@ namespace RCF {
     {
         std::size_t pos = static_cast<std::size_t>(mIs.getReadPos());
         std::size_t len = mByteBuffer.getLength();
-        RCF_ASSERT(pos <= len);
+        RCF_ASSERT_LTEQ(pos , len);
         return len - pos;
     }
 
@@ -201,8 +203,8 @@ namespace RCF {
     SerializationProtocolOut::SerializationProtocolOut() :
         mProtocol(DefaultSerializationProtocol),
         mMargin(),
-        mRuntimeVersion( RCF::getRuntimeVersion() ),
-        mArchiveVersion( RCF::getArchiveVersion() )
+        mRuntimeVersion( RCF::getDefaultRuntimeVersion() ),
+        mArchiveVersion( RCF::getDefaultArchiveVersion() )
     {}
 
     void SerializationProtocolOut::setSerializationProtocol(int protocol)
@@ -277,7 +279,7 @@ namespace RCF {
         case 3: mOutProtocol3.bind(*mOsPtr, mRuntimeVersion, mArchiveVersion, *this); break;
         case 4: mOutProtocol4.bind(*mOsPtr, mRuntimeVersion, mArchiveVersion, *this); break;
         case 5: mOutProtocol5.bind(*mOsPtr, mRuntimeVersion, mArchiveVersion, *this); break;
-        default: RCF_ASSERT(0);
+        default: RCF_ASSERT(0)(mProtocol);
         }
     }
 
@@ -290,7 +292,7 @@ namespace RCF {
         case 3: mOutProtocol3.unbind(); break;
         case 4: mOutProtocol4.unbind(); break;
         case 5: mOutProtocol5.unbind(); break;
-        default: RCF_ASSERT(0);
+        default: RCF_ASSERT(0)(mProtocol);
         }
     }
 
@@ -317,7 +319,9 @@ namespace RCF {
         {
             offset = mByteBuffers[i].first;
 
-            RCF_ASSERT(offsetPrev <= offset && offset <= len);
+            RCF_ASSERT(
+                offsetPrev <= offset && offset <= len)
+                (offsetPrev)(offset)(len);
 
             if (offset-offsetPrev > 0)
             {
@@ -343,7 +347,9 @@ namespace RCF {
             byteBuffers.push_back(mByteBuffers[i].second);
             offsetPrev = offset;
         }
-        RCF_ASSERT(offsetPrev <= offset && offset <= len);
+        RCF_ASSERT(
+            offsetPrev <= offset && offset <= len)
+            (offsetPrev)(offset)(len);
 
         if (len-offset > 0)
         {

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,12 +11,10 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
-
-/// @file
 
 #ifndef INCLUDE_RCF_ENUMS_HPP
 #define INCLUDE_RCF_ENUMS_HPP
@@ -26,9 +24,6 @@
 #include <RCF/Export.hpp>
 
 namespace RCF {
-
-    /// \addtogroup RCF Enums
-    /// @{
 
     /// Describes the transport types used by a RCF connection.
     enum TransportType
@@ -54,18 +49,16 @@ namespace RCF {
         /// HTTPS/TCP transport
         Tt_Https,
 
-        /// Proxy endpoint transport
-        Tt_Proxy
-
     };
 
-    /// Describes the transport protocols used by a RCF connection. Transport protocols are layered on top of the transport  type.
+    /// Describes the transport protocols used by a RCF connection. Transport
+    /// protocols are layered on top of the transport type.
     enum TransportProtocol
     {
         /// Unspecified
         Tp_Unspecified,
 
-        /// Clear
+        /// Clear text
         Tp_Clear,
 
         /// Windows NTLM
@@ -137,14 +130,10 @@ namespace RCF {
         Cit_X509
     };
 
-    /// Remote call mode
-    enum RemoteCallMode
+    enum RemoteCallSemantics
     {
-        /// One-way
-        Oneway, 
-
-        /// Two-way
-        Twoway, 
+        Oneway,
+        Twoway
     };
 
     enum WireProtocol
@@ -162,47 +151,6 @@ namespace RCF {
         Write,
         Read
     };
-
-    /// Describes which serialization implementation to use when serializing data structures for a remote call.
-    enum SerializationProtocol
-    {
-        /// SF binary
-        Sp_SfBinary = 1,
-
-        /// SF text
-        Sp_SfText = 2,
-
-        /// Boost.Serialization binary
-        Sp_BsBinary = 3,
-
-        /// Boost.Serialization text
-        Sp_BsText = 4,
-    };
-
-    /// Describes which activity a remote call is currently in.
-    enum RemoteCallPhase
-    {
-        // Establishing network connection to server.
-        Rcp_Connect,
-
-        /// Sending request to server.
-        Rcp_Send,
-
-        /// Waiting for response from server.
-        Rcp_Receive
-    };
-
-    /// Describes whether a remote call should continue or be canceled.
-    enum RemoteCallAction
-    {
-        /// Cancel the remote call.
-        Rca_Cancel,
-
-        /// Continue the remote call.
-        Rca_Continue
-    };
-
-    /// @}
 
     RCF_EXPORT std::string getTransportProtocolName(TransportProtocol protocol);
     RCF_EXPORT std::string getTransportTypeName(TransportType protocol);

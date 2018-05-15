@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,14 +11,14 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/SubscriptionService.hpp>
 
-#include <functional>
+#include <boost/bind.hpp>
 
 #include <typeinfo>
 
@@ -26,12 +26,10 @@
 #include <RCF/AsioServerTransport.hpp>
 #include <RCF/ClientStub.hpp>
 #include <RCF/ClientTransport.hpp>
-#include <RCF/Endpoint.hpp>
 #include <RCF/Future.hpp>
 #include <RCF/RcfClient.hpp>
 #include <RCF/RcfServer.hpp>
 #include <RCF/RcfSession.hpp>
-#include <RCF/Log.hpp>
 
 namespace RCF {
 
@@ -133,7 +131,7 @@ namespace RCF {
                 rcfSessionPtr->mStopCallInProgress = true;
 
                 // Remove subscription binding.
-                rcfSessionPtr->setDefaultStubEntryPtr(RcfClientPtr());
+                rcfSessionPtr->setDefaultStubEntryPtr(StubEntryPtr());
 
                 // Clear the destroy callback.
                 // TODO: how do we know that we're not clearing someone else's callback?
@@ -181,7 +179,7 @@ namespace RCF {
 #pragma warning( disable : 4355 ) // warning C4355: 'this' : used in base member initializer list
 #endif
 
-    SubscriptionService::SubscriptionService(std::uint32_t pingIntervalMs) :
+    SubscriptionService::SubscriptionService(boost::uint32_t pingIntervalMs) :
         mpServer(),
         mPingIntervalMs(pingIntervalMs),
         mPeriodicTimer(*this, pingIntervalMs)
@@ -196,40 +194,42 @@ namespace RCF {
     }
 
     SubscriptionPtr SubscriptionService::onRequestSubscriptionCompleted(
-        std::int32_t                      ret,
+        boost::int32_t                      ret,
         const std::string &                 publisherName,
         ClientStub &                        clientStub,
         RcfClientPtr                        rcfClientPtr,
         OnSubscriptionDisconnect            onDisconnect,
-        std::uint32_t                     pubToSubPingIntervalMs,
+        boost::uint32_t                     pubToSubPingIntervalMs,
         bool                                pingsEnabled)
     {
-        if ( ret != RcfError_Ok_Id )
+        if (ret != RcfError_Ok)
         {
-            RCF_THROW(Exception(ErrorMsg(ret)));
+            RCF_THROW( Exception( Error(ret) ) );
         }
 
-        ClientTransportUniquePtr clientTransportUniquePtr( 
+        ClientTransportAutoPtr clientTransportAutoPtr( 
                 clientStub.releaseTransport() );
 
         ServerTransport * pTransport = NULL;
         ServerTransportEx * pTransportEx = NULL;
 
-        pTransport = mpServer->findTransportCompatibleWith(
-            *clientTransportUniquePtr);
+        pTransport = & mpServer->findTransportCompatibleWith(
+            *clientTransportAutoPtr);
 
         pTransportEx = dynamic_cast<ServerTransportEx *>(pTransport);
 
         ServerTransportEx & serverTransportEx = * pTransportEx; 
 
         SessionPtr sessionPtr = serverTransportEx.createServerSession(
-            clientTransportUniquePtr, 
-            rcfClientPtr, 
+            clientTransportAutoPtr,
+            StubEntryPtr(new StubEntry(rcfClientPtr)),
             true);
 
         RCF_ASSERT( sessionPtr );
 
         RcfSessionPtr rcfSessionPtr = sessionPtr;
+
+        rcfSessionPtr->setUserData(clientStub.getUserData());
         rcfSessionPtr->setPingTimestamp();
 
         std::string publisherUrl;
@@ -239,33 +239,31 @@ namespace RCF {
             publisherUrl = epPtr->asString();
         }
 
-        //if (!clientTransportUniquePtr->isAssociatedWithIoService())
+        //if (!clientTransportAutoPtr->isAssociatedWithIoService())
         //{
         //    AsioServerTransport & asioTransport = dynamic_cast<AsioServerTransport &>(
         //        mpServer->getServerTransport());
 
-        //    clientTransportUniquePtr->associateWithIoService(asioTransport.getIoService());
+        //    clientTransportAutoPtr->associateWithIoService(asioTransport.getIoService());
         //}
 
         SubscriptionPtr subscriptionPtr( new Subscription(
             *this,
-            std::move(clientTransportUniquePtr), 
+            clientTransportAutoPtr, 
             rcfSessionPtr, 
             pubToSubPingIntervalMs, 
             publisherUrl,
             publisherName,
             onDisconnect));
 
-        using std::placeholders::_1;
-
-        rcfSessionPtr->setOnDestroyCallback( std::bind(
+        rcfSessionPtr->setOnDestroyCallback( boost::bind(
             &Subscription::onDisconnect,
             SubscriptionWeakPtr(subscriptionPtr),
             _1));
 
         subscriptionPtr->setWeakThisPtr(subscriptionPtr);
 
-        subscriptionPtr->mPublisherSupportsPubSubPings = pingsEnabled;
+        subscriptionPtr->mPingsEnabled = pingsEnabled;
 
         Lock lock(mSubscriptionsMutex);
         mSubscriptions.insert(subscriptionPtr);
@@ -274,11 +272,11 @@ namespace RCF {
     }
 
 
-    std::int32_t SubscriptionService::doRequestSubscription(
+    boost::int32_t SubscriptionService::doRequestSubscription(
         ClientStub &            clientStubOrig, 
         const std::string &     publisherName,
-        std::uint32_t subToPubPingIntervalMs, 
-        std::uint32_t &       pubToSubPingIntervalMs,
+        boost::uint32_t subToPubPingIntervalMs, 
+        boost::uint32_t &       pubToSubPingIntervalMs,
         bool &                  pingsEnabled)
     {
         I_RcfClient client("", clientStubOrig);
@@ -305,7 +303,7 @@ namespace RCF {
         clientStub.setOutofBandResponse(ByteBuffer());
         msg.decodeResponse(controlResponse);
 
-        std::int32_t ret = msg.mResponseError;
+        boost::int32_t ret = msg.mResponseError;
         pubToSubPingIntervalMs = msg.mPubToSubPingIntervalMs;
 
         clientStubOrig.setTransport( client.getClientStub().releaseTransport() );
@@ -333,25 +331,16 @@ namespace RCF {
             publisherName = defaultPublisherName;
         }
 
-        RCF::TransportType transportType = clientStub.getTransportType();
-        
-        std::uint32_t       subToPubPingIntervalMs = mPingIntervalMs;
-
-        // For HTTP/HTTPS, there's no way to send pings from subscriber to publisher, due to HTTP message semantics.
-        if ( transportType == RCF::Tt_Http || transportType == RCF::Tt_Https )
-        {
-            subToPubPingIntervalMs = 0;
-        }
-
-        std::uint32_t       pubToSubPingIntervalMs = 0;
+        boost::uint32_t     subToPubPingIntervalMs = mPingIntervalMs;
+        boost::uint32_t     pubToSubPingIntervalMs = 0;
         bool                pingsEnabled = true;
 
-        std::int32_t ret = 0;
+        boost::int32_t ret = 0;
 
         // First round trip, to do version negotiation with the server.
         clientStub.ping();
 
-        if ( clientStub.getRuntimeVersion() <= 11 )
+        if (clientStub.getRuntimeVersion() <= 11)
         {
             ret = doRequestSubscription_Legacy(
                 clientStub,
@@ -385,19 +374,19 @@ namespace RCF {
     void SubscriptionService::createSubscriptionImplEnd(
         ExceptionPtr                    ePtr,
         ClientStubPtr                   clientStubPtr,
-        std::int32_t                  ret,
+        boost::int32_t                  ret,
         const std::string &             publisherName,
         RcfClientPtr                    rcfClientPtr,
         OnSubscriptionDisconnect        onDisconnect,
         OnAsyncSubscribeCompleted       onCompletion,
-        std::uint32_t                 incomingPingIntervalMs,
+        boost::uint32_t                 incomingPingIntervalMs,
         bool                            pingsEnabled)
     {
         SubscriptionPtr subscriptionPtr;
 
-        if ( !ePtr && ret != RcfError_Ok_Id )
+        if (!ePtr && ret != RcfError_Ok)
         {
-            ePtr.reset(new Exception(ErrorMsg(ret)));
+            ePtr.reset( new Exception( Error(ret) ) );
         }
 
         if (!ePtr)
@@ -425,8 +414,8 @@ namespace RCF {
     {
         bool pingsEnabled = true;
 
-        std::uint32_t ret = 0;
-        std::uint32_t pubToSubPingIntervalMs = 0;
+        boost::uint32_t ret = 0;
+        boost::uint32_t pubToSubPingIntervalMs = 0;
 
         ExceptionPtr ePtr( fv.getAsyncException().release() );
         if (!ePtr)
@@ -465,16 +454,8 @@ namespace RCF {
         requestClientPtr->getClientStub().setTransport( clientStubOrig.releaseTransport() );
         requestClientPtr->getClientStub().setAsyncDispatcher(*mpServer);
 
-        RCF::TransportType transportType = requestClientPtr->getClientStub().getTransportType();
-        std::uint32_t subToPubPingIntervalMs = mPingIntervalMs;
-        // For HTTP/HTTPS, there's no way to send pings from subscriber to publisher, due to HTTP message semantics.
-        if ( transportType == RCF::Tt_Http || transportType == RCF::Tt_Https )
-        {
-            subToPubPingIntervalMs = 0;
-        }
-
         // Set OOB request.
-
+        boost::uint32_t subToPubPingIntervalMs = mPingIntervalMs;
         OobRequestSubscription msg(
             clientStubOrig.getRuntimeVersion(), 
             publisherName, 
@@ -485,7 +466,7 @@ namespace RCF {
         requestClientPtr->getClientStub().setOutofBandRequest(controlRequest);
 
         Future<Void> fv;
-        fv = requestClientPtr->getClientStub().ping( RCF::AsyncTwoway( std::bind(
+        fv = requestClientPtr->getClientStub().ping( RCF::AsyncTwoway( boost::bind(
             &SubscriptionService::doRequestSubscriptionAsync_Complete,
             this,
             fv,
@@ -513,11 +494,11 @@ namespace RCF {
         
         RCF_ASSERT(onCompletion);
 
-        if ( clientStub.getRuntimeVersion() <= 11 )
+        if (clientStub.getRuntimeVersion() <= 11)
         {
             doRequestSubscriptionAsync_Legacy(
-                clientStub,
-                publisherName,
+                clientStub, 
+                publisherName, 
                 rcfClientPtr,
                 parms);
         }
@@ -538,12 +519,12 @@ namespace RCF {
         mSubscriptions.erase(subscriptionWeakPtr);
     }
 
-    void SubscriptionService::setPingIntervalMs(std::uint32_t pingIntervalMs)
+    void SubscriptionService::setPingIntervalMs(boost::uint32_t pingIntervalMs)
     {
         mPingIntervalMs = pingIntervalMs;
     }
 
-    std::uint32_t SubscriptionService::getPingIntervalMs() const
+    boost::uint32_t SubscriptionService::getPingIntervalMs() const
     {
         return mPingIntervalMs;
     }
@@ -620,13 +601,13 @@ namespace RCF {
             if (subPtr)
             {
                 Subscription & sub = * subPtr;
-                if ( sub.mPublisherSupportsPubSubPings && sub.mConnectionPtr && sub.isConnected() )
+                if ( sub.mPingsEnabled && sub.mConnectionPtr && sub.isConnected() )
                 {
                     // Lock will be unlocked when the asynchronous send completes.
                     // Using recursive lock here because the ping may result in a 
                     // disconnect, which will then automatically close the connection
                     // and close the subscription, which requires the lock to be taken again.
-                    std::shared_ptr<RecursiveLock> lockPtr( new RecursiveLock(sub.mMutex) );
+                    boost::shared_ptr<RecursiveLock> lockPtr( new RecursiveLock(sub.mMutex) );
 
                     // TODO: async pings
                     bool asyncPings = false;
@@ -635,7 +616,7 @@ namespace RCF {
                         AsioErrorCode ecDummy;
 
                         sub.mConnectionPtr->getClientStub().ping(
-                            RCF::AsyncOneway(std::bind(
+                            RCF::AsyncOneway(boost::bind(
                                 &SubscriptionService::sOnPingCompleted, 
                                 lockPtr)));
                     }
@@ -647,7 +628,7 @@ namespace RCF {
                         }
                         catch(const RCF::Exception & e)
                         {
-                            std::string errMsg = e.getErrorMessage();
+                            std::string errMsg = e.getErrorString();
                             RCF_UNUSED_VARIABLE(errMsg);
                         }
                     }
@@ -681,15 +662,15 @@ namespace RCF {
                         RCF_LOG_2()(sub.mPublisherUrl)(sub.mTopic) << "Dropping subscription. Publisher has closed connection.";
                         subsToDrop.push_back(subPtr);
                     }
-                    else if (sub.mPublisherSupportsPubSubPings)
+                    else if (sub.mPingsEnabled)
                     {
-                        std::uint32_t pingIntervalMs = sub.mPubToSubPingIntervalMs;
+                        boost::uint32_t pingIntervalMs = sub.mPingIntervalMs;
                         if (pingIntervalMs)
                         {
                             RCF::Timer pingTimer(sessionPtr->getPingTimestamp());
                             if (pingTimer.elapsed(5000 + 2*pingIntervalMs))
                             {
-                                RCF_LOG_2()(sub.mPublisherUrl)(sub.mTopic)(sub.mPubToSubPingIntervalMs) << "Dropping subscription. Publisher has not sent pings.";
+                                RCF_LOG_2()(sub.mPublisherUrl)(sub.mTopic)(sub.mPingIntervalMs) << "Dropping subscription. Publisher has not sent pings.";
                                 subsToDrop.push_back(subPtr);
                             }
                         }
@@ -708,25 +689,25 @@ namespace RCF {
 
     Subscription::Subscription(
         SubscriptionService & subscriptionService,
-        ClientTransportUniquePtr clientTransportUniquePtr,
+        ClientTransportAutoPtr clientTransportAutoPtr,
         RcfSessionWeakPtr rcfSessionWeakPtr,
-        std::uint32_t incomingPingIntervalMs,
+        boost::uint32_t incomingPingIntervalMs,
         const std::string & publisherUrl,
         const std::string & topic,
         OnSubscriptionDisconnect onDisconnect) :
             mSubscriptionService(subscriptionService),
             mRcfSessionWeakPtr(rcfSessionWeakPtr),
             mConnectionPtr(),
-            mPubToSubPingIntervalMs(incomingPingIntervalMs),
-            mPublisherSupportsPubSubPings(false),
+            mPingIntervalMs(incomingPingIntervalMs),
+            mPingsEnabled(false),
             mPublisherUrl(publisherUrl),
             mTopic(topic),
             mOnDisconnect(onDisconnect),
             mClosed(false)
     {
-        if ( clientTransportUniquePtr.get() )
+        if ( clientTransportAutoPtr.get() )
         {
-            mConnectionPtr.reset(new I_RcfClient("", std::move(clientTransportUniquePtr)));
+            mConnectionPtr.reset(new I_RcfClient("", clientTransportAutoPtr));
             mConnectionPtr->getClientStub().setAutoReconnect(false);
         }
     }

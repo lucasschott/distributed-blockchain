@@ -2,7 +2,7 @@
 // posix/basic_stream_descriptor.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,7 +21,6 @@
   || defined(GENERATING_DOCUMENTATION)
 
 #include <cstddef>
-#include "RCF/external/asio/asio/detail/handler_type_requirements.hpp"
 #include "RCF/external/asio/asio/detail/throw_error.hpp"
 #include "RCF/external/asio/asio/error.hpp"
 #include "RCF/external/asio/asio/posix/basic_descriptor.hpp"
@@ -49,13 +48,8 @@ class basic_stream_descriptor
   : public basic_descriptor<StreamDescriptorService>
 {
 public:
-  /// (Deprecated: Use native_handle_type.) The native representation of a
-  /// descriptor.
-  typedef typename StreamDescriptorService::native_handle_type native_type;
-
   /// The native representation of a descriptor.
-  typedef typename StreamDescriptorService::native_handle_type
-    native_handle_type;
+  typedef typename StreamDescriptorService::native_type native_type;
 
   /// Construct a basic_stream_descriptor without opening it.
   /**
@@ -86,46 +80,10 @@ public:
    * @throws asio::system_error Thrown on failure.
    */
   basic_stream_descriptor(asio::io_service& io_service,
-      const native_handle_type& native_descriptor)
+      const native_type& native_descriptor)
     : basic_descriptor<StreamDescriptorService>(io_service, native_descriptor)
   {
   }
-
-#if defined(ASIO_HAS_MOVE) || defined(GENERATING_DOCUMENTATION)
-  /// Move-construct a basic_stream_descriptor from another.
-  /**
-   * This constructor moves a stream descriptor from one object to another.
-   *
-   * @param other The other basic_stream_descriptor object from which the move
-   * will occur.
-   *
-   * @note Following the move, the moved-from object is in the same state as if
-   * constructed using the @c basic_stream_descriptor(io_service&) constructor.
-   */
-  basic_stream_descriptor(basic_stream_descriptor&& other)
-    : basic_descriptor<StreamDescriptorService>(
-        ASIO_MOVE_CAST(basic_stream_descriptor)(other))
-  {
-  }
-
-  /// Move-assign a basic_stream_descriptor from another.
-  /**
-   * This assignment operator moves a stream descriptor from one object to
-   * another.
-   *
-   * @param other The other basic_stream_descriptor object from which the move
-   * will occur.
-   *
-   * @note Following the move, the moved-from object is in the same state as if
-   * constructed using the @c basic_stream_descriptor(io_service&) constructor.
-   */
-  basic_stream_descriptor& operator=(basic_stream_descriptor&& other)
-  {
-    basic_descriptor<StreamDescriptorService>::operator=(
-        ASIO_MOVE_CAST(basic_stream_descriptor)(other));
-    return *this;
-  }
-#endif // defined(ASIO_HAS_MOVE) || defined(GENERATING_DOCUMENTATION)
 
   /// Write some data to the descriptor.
   /**
@@ -158,9 +116,8 @@ public:
   std::size_t write_some(const ConstBufferSequence& buffers)
   {
     asio::error_code ec;
-    std::size_t s = this->get_service().write_some(
-        this->get_implementation(), buffers, ec);
-    asio::detail::throw_error(ec, "write_some");
+    std::size_t s = this->service.write_some(this->implementation, buffers, ec);
+    asio::detail::throw_error(ec);
     return s;
   }
 
@@ -184,8 +141,7 @@ public:
   std::size_t write_some(const ConstBufferSequence& buffers,
       asio::error_code& ec)
   {
-    return this->get_service().write_some(
-        this->get_implementation(), buffers, ec);
+    return this->service.write_some(this->implementation, buffers, ec);
   }
 
   /// Start an asynchronous write.
@@ -224,17 +180,10 @@ public:
    * std::vector.
    */
   template <typename ConstBufferSequence, typename WriteHandler>
-  ASIO_INITFN_RESULT_TYPE(WriteHandler,
-      void (asio::error_code, std::size_t))
-  async_write_some(const ConstBufferSequence& buffers,
-      ASIO_MOVE_ARG(WriteHandler) handler)
+  void async_write_some(const ConstBufferSequence& buffers,
+      WriteHandler handler)
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a WriteHandler.
-    ASIO_WRITE_HANDLER_CHECK(WriteHandler, handler) type_check;
-
-    return this->get_service().async_write_some(this->get_implementation(),
-        buffers, ASIO_MOVE_CAST(WriteHandler)(handler));
+    this->service.async_write_some(this->implementation, buffers, handler);
   }
 
   /// Read some data from the descriptor.
@@ -269,9 +218,8 @@ public:
   std::size_t read_some(const MutableBufferSequence& buffers)
   {
     asio::error_code ec;
-    std::size_t s = this->get_service().read_some(
-        this->get_implementation(), buffers, ec);
-    asio::detail::throw_error(ec, "read_some");
+    std::size_t s = this->service.read_some(this->implementation, buffers, ec);
+    asio::detail::throw_error(ec);
     return s;
   }
 
@@ -296,8 +244,7 @@ public:
   std::size_t read_some(const MutableBufferSequence& buffers,
       asio::error_code& ec)
   {
-    return this->get_service().read_some(
-        this->get_implementation(), buffers, ec);
+    return this->service.read_some(this->implementation, buffers, ec);
   }
 
   /// Start an asynchronous read.
@@ -337,17 +284,10 @@ public:
    * std::vector.
    */
   template <typename MutableBufferSequence, typename ReadHandler>
-  ASIO_INITFN_RESULT_TYPE(ReadHandler,
-      void (asio::error_code, std::size_t))
-  async_read_some(const MutableBufferSequence& buffers,
-      ASIO_MOVE_ARG(ReadHandler) handler)
+  void async_read_some(const MutableBufferSequence& buffers,
+      ReadHandler handler)
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a ReadHandler.
-    ASIO_READ_HANDLER_CHECK(ReadHandler, handler) type_check;
-
-    return this->get_service().async_read_some(this->get_implementation(),
-        buffers, ASIO_MOVE_CAST(ReadHandler)(handler));
+    this->service.async_read_some(this->implementation, buffers, handler);
   }
 };
 

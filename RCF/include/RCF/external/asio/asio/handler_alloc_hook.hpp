@@ -2,7 +2,7 @@
 // handler_alloc_hook.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,8 +31,10 @@ namespace asio {
  * Implement asio_handler_allocate and asio_handler_deallocate for your own
  * handlers to provide custom allocation for these temporary objects.
  *
- * The default implementation of these allocation hooks uses <tt>::operator
- * new</tt> and <tt>::operator delete</tt>.
+ * This default implementation is simply:
+ * @code
+ * return ::operator new(size);
+ * @endcode
  *
  * @note All temporary objects associated with a handler will be deallocated
  * before the upcall to the handler is performed. This allows the same memory to
@@ -54,28 +56,31 @@ namespace asio {
  * }
  * @endcode
  */
-ASIO_DECL void* asio_handler_allocate(
-    std::size_t size, ...);
+inline void* asio_handler_allocate(std::size_t size, ...)
+{
+  return ::operator new(size);
+}
 
 /// Default deallocation function for handlers.
 /**
  * Implement asio_handler_allocate and asio_handler_deallocate for your own
  * handlers to provide custom allocation for the associated temporary objects.
  *
- * The default implementation of these allocation hooks uses <tt>::operator
- * new</tt> and <tt>::operator delete</tt>.
+ * This default implementation is simply:
+ * @code
+ * ::operator delete(pointer);
+ * @endcode
  *
  * @sa asio_handler_allocate.
  */
-ASIO_DECL void asio_handler_deallocate(
-    void* pointer, std::size_t size, ...);
+inline void asio_handler_deallocate(void* pointer, std::size_t size, ...)
+{
+  (void)(size);
+  ::operator delete(pointer);
+}
 
 } // namespace asio
 
 #include "RCF/external/asio/asio/detail/pop_options.hpp"
-
-#if defined(ASIO_HEADER_ONLY)
-# include "RCF/external/asio/asio/impl/handler_alloc_hook.ipp"
-#endif // defined(ASIO_HEADER_ONLY)
 
 #endif // ASIO_HANDLER_ALLOC_HOOK_HPP

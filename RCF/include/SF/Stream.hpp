@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,6 +21,8 @@
 
 #include <map>
 #include <string>
+
+#include <boost/noncopyable.hpp>
 
 #include <RCF/Export.hpp>
 
@@ -93,8 +95,8 @@ namespace SF {
 
     private:
         bool mEnabled;
-        std::unique_ptr<std::map<UInt32, ObjectId> >                          mNidToIdMap;
-        std::unique_ptr<std::map<std::string, std::map< void *, void * > > >  mTypeToObjMap;
+        std::auto_ptr<std::map<UInt32, ObjectId> >                          mNidToIdMap;
+        std::auto_ptr<std::map<std::string, std::map< void *, void * > > >  mTypeToObjMap;
     };
 
     class RCF_EXPORT ContextWrite
@@ -110,13 +112,13 @@ namespace SF {
     private:
         bool                                            mEnabled;
         UInt32                                          mCurrentId;
-        std::unique_ptr<std::map<ObjectId, UInt32> >      mIdToNidMap;
+        std::auto_ptr<std::map<ObjectId, UInt32> >      mIdToNidMap;
     };
 
     //**************************************************
     // Stream local storage
 
-    class RCF_EXPORT LocalStorage : Noncopyable
+    class RCF_EXPORT LocalStorage : boost::noncopyable
     {
     public:
         LocalStorage();
@@ -134,8 +136,7 @@ namespace SF {
     class Node;
     class SerializerBase;
 
-    /// Base class for input streams using SF serialization.  Use operator >>() to deserialize objects from the stream.
-    class RCF_EXPORT IStream : Noncopyable
+    class RCF_EXPORT IStream : boost::noncopyable
     {
     public:
 
@@ -147,7 +148,6 @@ namespace SF {
             int             runtimeVersion = 0, 
             int             archiveVersion = 0);
 
-        /// Constructs an IStream from a std::istream. Serialized data will be read from the std::istream.
         IStream(
             std::istream &  is,
             std::size_t     archiveSize = 0, 
@@ -178,16 +178,10 @@ namespace SF {
         virtual I_Encoding &
                     getEncoding() = 0;
 
-        /// Gets the RCF runtime version associated with this stream.
         int         getRuntimeVersion();
-
-        /// Gets the archive version associated with this stream.
         int         getArchiveVersion();
 
-        /// Sets the archive version associated with this stream.
         void        setArchiveVersion(int archiveVersion);
-
-        /// Sets the RCF runtime version associated with this stream.
         void        setRuntimeVersion(int runtimeVersion);
 
         void        ignoreVersionStamp(bool ignore = true);
@@ -207,11 +201,9 @@ namespace SF {
 
         // Streaming operators.
 
-        /// Deserialize an object from the stream.
         template<typename T>
         IStream & operator>>(T &t);
 
-        /// Deserialize an object from the stream.
         template<typename T>
         IStream & operator>>(const T &t);
 
@@ -229,8 +221,7 @@ namespace SF {
         RCF::SerializationProtocolIn * mpSerializationProtocolIn;
     };
 
-    /// Base class for output streams using SF serialization. Use operator <<() to serialize objects into the stream.
-    class RCF_EXPORT OStream : Noncopyable
+    class RCF_EXPORT OStream : boost::noncopyable
     {
     public:
         OStream();
@@ -240,7 +231,6 @@ namespace SF {
             int                 runtimeVersion = 0, 
             int                 archiveVersion = 0);
 
-        /// Constructs an OStream from a std::ostream. Serialized data will be written to the std::ostream.
         OStream(
             std::ostream &      os,
             int                 runtimeVersion = 0, 
@@ -267,16 +257,10 @@ namespace SF {
         virtual I_Encoding &
                     getEncoding() = 0;
 
-        /// Gets the RCF runtime version associated with this stream.
         int         getRuntimeVersion();
-
-        /// Gets the archive version associated with this stream.
         int         getArchiveVersion();
 
-        /// Sets the archive version associated with this stream.
         void        setArchiveVersion(int archiveVersion);
-
-        /// Sets the RCF runtime version associated with this stream.
         void        setRuntimeVersion(int runtimeVersion);
 
         void        suppressArchiveMetadata(bool suppress = true);
@@ -297,7 +281,6 @@ namespace SF {
 
         // Streaming operator.
 
-        /// Serialize an object to the stream.
         template<typename T>
         OStream & operator<<(const T &t);
 

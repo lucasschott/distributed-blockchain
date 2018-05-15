@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,19 +19,44 @@
 #ifndef INCLUDE_RCF_CURRENTSESSION_HPP
 #define INCLUDE_RCF_CURRENTSESSION_HPP
 
-#include <memory>
+#include <boost/shared_ptr.hpp>
+
+#include <RCF/RcfSession.hpp>
+#include <RCF/ThreadLibrary.hpp>
+#include <RCF/ThreadLocalData.hpp>
 
 namespace RCF {
 
-    class RcfSession;
-    typedef std::shared_ptr<RcfSession> RcfSessionPtr;
+    
 
     class CurrentRcfSessionSentry
     {
     public:
-        CurrentRcfSessionSentry(RcfSession & session);
-        CurrentRcfSessionSentry(RcfSessionPtr sessionPtr);
-        ~CurrentRcfSessionSentry();        
+        CurrentRcfSessionSentry(RcfSession & session)
+        {
+            RcfSession * pPrev = getTlsRcfSessionPtr();
+            getRcfSessionSentryStack().push_back(pPrev);
+
+            setTlsRcfSessionPtr(& session);
+        }
+
+        CurrentRcfSessionSentry(RcfSessionPtr sessionPtr)
+        {
+            RcfSession * pPrev = getTlsRcfSessionPtr();
+            getRcfSessionSentryStack().push_back(pPrev);
+
+            RcfSession * pSession = sessionPtr.get();
+            setTlsRcfSessionPtr(pSession);
+        }
+
+        ~CurrentRcfSessionSentry()
+        {
+            RcfSession * pPrev = getRcfSessionSentryStack().back();
+            getRcfSessionSentryStack().pop_back();
+            setTlsRcfSessionPtr(pPrev);
+        }
+
+        
     };
 
 } // namespace RCF

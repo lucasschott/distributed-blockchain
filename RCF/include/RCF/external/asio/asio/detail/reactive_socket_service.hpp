@@ -2,7 +2,7 @@
 // detail/reactive_socket_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,11 +19,11 @@
 
 #if !defined(ASIO_HAS_IOCP)
 
+#include <boost/utility/addressof.hpp>
 #include "RCF/external/asio/asio/buffer.hpp"
 #include "RCF/external/asio/asio/error.hpp"
 #include "RCF/external/asio/asio/io_service.hpp"
 #include "RCF/external/asio/asio/socket_base.hpp"
-#include "RCF/external/asio/asio/detail/addressof.hpp"
 #include "RCF/external/asio/asio/detail/buffer_sequence_adapter.hpp"
 #include "RCF/external/asio/asio/detail/noncopyable.hpp"
 #include "RCF/external/asio/asio/detail/reactive_null_buffers_op.hpp"
@@ -55,7 +55,7 @@ public:
   typedef typename Protocol::endpoint endpoint_type;
 
   // The native type of a socket.
-  typedef socket_type native_handle_type;
+  typedef socket_type native_type;
 
   // The implementation type of the socket.
   struct implementation_type :
@@ -77,39 +77,6 @@ public:
   {
   }
 
-  // Move-construct a new socket implementation.
-  void move_construct(implementation_type& impl,
-      implementation_type& other_impl)
-  {
-    this->base_move_construct(impl, other_impl);
-
-    impl.protocol_ = other_impl.protocol_;
-    other_impl.protocol_ = endpoint_type().protocol();
-  }
-
-  // Move-assign from another socket implementation.
-  void move_assign(implementation_type& impl,
-      reactive_socket_service_base& other_service,
-      implementation_type& other_impl)
-  {
-    this->base_move_assign(impl, other_service, other_impl);
-
-    impl.protocol_ = other_impl.protocol_;
-    other_impl.protocol_ = endpoint_type().protocol();
-  }
-
-  // Move-construct a new socket implementation from another protocol type.
-  template <typename Protocol1>
-  void converting_move_construct(implementation_type& impl,
-      typename reactive_socket_service<
-        Protocol1>::implementation_type& other_impl)
-  {
-    this->base_move_construct(impl, other_impl);
-
-    impl.protocol_ = protocol_type(other_impl.protocol_);
-    other_impl.protocol_ = typename Protocol1::endpoint().protocol();
-  }
-
   // Open a new socket implementation.
   asio::error_code open(implementation_type& impl,
       const protocol_type& protocol, asio::error_code& ec)
@@ -122,7 +89,7 @@ public:
 
   // Assign a native socket to a socket implementation.
   asio::error_code assign(implementation_type& impl,
-      const protocol_type& protocol, const native_handle_type& native_socket,
+      const protocol_type& protocol, const native_type& native_socket,
       asio::error_code& ec)
   {
     if (!do_assign(impl, protocol.type(), native_socket, ec))
@@ -131,7 +98,7 @@ public:
   }
 
   // Get the native socket representation.
-  native_handle_type native_handle(implementation_type& impl)
+  native_type native(implementation_type& impl)
   {
     return impl.socket_;
   }
@@ -215,7 +182,7 @@ public:
       asio::error_code& ec)
   {
     // Wait for socket to become ready.
-    socket_ops::poll_write(impl.socket_, impl.state_, ec);
+    socket_ops::poll_write(impl.socket_, ec);
 
     return 0;
   }
@@ -226,44 +193,33 @@ public:
   void async_send_to(implementation_type& impl,
       const ConstBufferSequence& buffers,
       const endpoint_type& destination, socket_base::message_flags flags,
-      Handler& handler)
+      Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_socket_sendto_op<ConstBufferSequence,
         endpoint_type, Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
     p.p = new (p.v) op(impl.socket_, buffers, destination, flags, handler);
 
-    ASIO_HANDLER_CREATION((p.p, "socket", &impl, "async_send_to"));
-
-    start_op(impl, reactor::write_op, p.p, is_continuation, true, false);
+    start_op(impl, reactor::write_op, p.p, true, false);
     p.v = p.p = 0;
   }
 
   // Start an asynchronous wait until data can be sent without blocking.
   template <typename Handler>
   void async_send_to(implementation_type& impl, const null_buffers&,
-      const endpoint_type&, socket_base::message_flags, Handler& handler)
+      const endpoint_type&, socket_base::message_flags, Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_null_buffers_op<Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
     p.p = new (p.v) op(handler);
 
-    ASIO_HANDLER_CREATION((p.p, "socket",
-          &impl, "async_send_to(null_buffers)"));
-
-    start_op(impl, reactor::write_op, p.p, is_continuation, false, false);
+    start_op(impl, reactor::write_op, p.p, false, false);
     p.v = p.p = 0;
   }
 
@@ -295,7 +251,7 @@ public:
       asio::error_code& ec)
   {
     // Wait for socket to become ready.
-    socket_ops::poll_read(impl.socket_, impl.state_, ec);
+    socket_ops::poll_read(impl.socket_, ec);
 
     // Reset endpoint since it can be given no sensible value at this time.
     sender_endpoint = endpoint_type();
@@ -309,28 +265,22 @@ public:
   template <typename MutableBufferSequence, typename Handler>
   void async_receive_from(implementation_type& impl,
       const MutableBufferSequence& buffers, endpoint_type& sender_endpoint,
-      socket_base::message_flags flags, Handler& handler)
+      socket_base::message_flags flags, Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_socket_recvfrom_op<MutableBufferSequence,
         endpoint_type, Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
-    int protocol = impl.protocol_.type();
-    p.p = new (p.v) op(impl.socket_, protocol,
+    int protocol_type = impl.protocol_.type();
+    p.p = new (p.v) op(impl.socket_, protocol_type,
         buffers, sender_endpoint, flags, handler);
-
-    ASIO_HANDLER_CREATION((p.p, "socket",
-          &impl, "async_receive_from"));
 
     start_op(impl,
         (flags & socket_base::message_out_of_band)
           ? reactor::except_op : reactor::read_op,
-        p.p, is_continuation, true, false);
+        p.p, true, false);
     p.v = p.p = 0;
   }
 
@@ -338,20 +288,14 @@ public:
   template <typename Handler>
   void async_receive_from(implementation_type& impl,
       const null_buffers&, endpoint_type& sender_endpoint,
-      socket_base::message_flags flags, Handler& handler)
+      socket_base::message_flags flags, Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_null_buffers_op<Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
     p.p = new (p.v) op(handler);
-
-    ASIO_HANDLER_CREATION((p.p, "socket",
-          &impl, "async_receive_from(null_buffers)"));
 
     // Reset endpoint since it can be given no sensible value at this time.
     sender_endpoint = endpoint_type();
@@ -359,7 +303,7 @@ public:
     start_op(impl,
         (flags & socket_base::message_out_of_band)
           ? reactor::except_op : reactor::read_op,
-        p.p, is_continuation, false, false);
+        p.p, false, false);
     p.v = p.p = 0;
   }
 
@@ -396,22 +340,17 @@ public:
   // must be valid until the accept's handler is invoked.
   template <typename Socket, typename Handler>
   void async_accept(implementation_type& impl, Socket& peer,
-      endpoint_type* peer_endpoint, Handler& handler)
+      endpoint_type* peer_endpoint, Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_socket_accept_op<Socket, Protocol, Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
     p.p = new (p.v) op(impl.socket_, impl.state_, peer,
         impl.protocol_, peer_endpoint, handler);
 
-    ASIO_HANDLER_CREATION((p.p, "socket", &impl, "async_accept"));
-
-    start_accept_op(impl, p.p, is_continuation, peer.is_open());
+    start_accept_op(impl, p.p, peer.is_open());
     p.v = p.p = 0;
   }
 
@@ -427,22 +366,16 @@ public:
   // Start an asynchronous connect.
   template <typename Handler>
   void async_connect(implementation_type& impl,
-      const endpoint_type& peer_endpoint, Handler& handler)
+      const endpoint_type& peer_endpoint, Handler handler)
   {
-    bool is_continuation =
-      asio_handler_cont_helpers::is_continuation(handler);
-
     // Allocate and construct an operation to wrap the handler.
     typedef reactive_socket_connect_op<Handler> op;
-    typename op::ptr p = { asio::detail::addressof(handler),
+    typename op::ptr p = { boost::addressof(handler),
       asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0 };
     p.p = new (p.v) op(impl.socket_, handler);
 
-    ASIO_HANDLER_CREATION((p.p, "socket", &impl, "async_connect"));
-
-    start_connect_op(impl, p.p, is_continuation,
-        peer_endpoint.data(), peer_endpoint.size());
+    start_connect_op(impl, p.p, peer_endpoint.data(), peer_endpoint.size());
     p.v = p.p = 0;
   }
 };

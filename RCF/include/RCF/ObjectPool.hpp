@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -20,11 +20,10 @@
 #define INCLUDE_RCF_OBJECTPOOL_HPP
 
 #include <vector>
-#include <functional>
-#include <map>
-#include <memory>
 
-#include <RCF/MemStream.hpp>
+#include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
+
 #include <RCF/Tools.hpp>
 #include <RCF/ThreadLibrary.hpp>
 
@@ -77,8 +76,8 @@ namespace RCF {
             size_type cnt, 
             typename std::allocator<void>::const_pointer = 0)
         {
-            static_assert( sizeof(T) <= CbSize, "Invalid type T." );
-            RCF_ASSERT(cnt == 1);
+            BOOST_STATIC_ASSERT( sizeof(T) <= CbSize );
+            RCF_ASSERT_EQ(cnt , 1);
             RCF_UNUSED_VARIABLE(cnt);
             return reinterpret_cast<pointer>(CbAllocatorBase::allocate());
         }
@@ -107,9 +106,8 @@ namespace RCF {
     };
 
     class ReallocBuffer;
-    typedef std::shared_ptr<ReallocBuffer> ReallocBufferPtr;
+    typedef boost::shared_ptr<ReallocBuffer> ReallocBufferPtr;
 
-    /// Manages a cache of objects of various types.
     class RCF_EXPORT ObjectPool
     {
     public:
@@ -117,16 +115,12 @@ namespace RCF {
         ObjectPool();
         ~ObjectPool();
 
-        /// Enables caching of objects of type T. 
-        /// The cache will hold at most maxCount instances of objects of type T.
-        /// clearFunc() will be called on each instance of type T which is passed in to the cache.
         template<typename T>
-        void enableCaching(std::size_t maxCount, std::function<void(T *)> clearFunc)
+        void enableCaching(std::size_t maxCount, boost::function1<void, T *> clearFunc)
         {
             enableCaching( (T *) NULL, maxCount, clearFunc);
         }
 
-        /// Disables caching of objects of type T.
         template<typename T>
         void disableCaching()
         {
@@ -134,7 +128,7 @@ namespace RCF {
         }
 
         template<typename T>
-        void enableCaching(T *, std::size_t maxCount, std::function<void(T *)> clearFunc)
+        void enableCaching(T *, std::size_t maxCount, boost::function1<void, T *> clearFunc)
         {
             RCF::WriteLock lock(mObjPoolMutex);
             RCF::TypeInfo ti( typeid(T) );
@@ -152,7 +146,6 @@ namespace RCF {
             mObjPool[ti]->clear();
         }
 
-        // Returns a value indicating of caching is enabled for type T.
         template<typename T>
         bool isCachingEnabled(T *)
         {
@@ -184,17 +177,14 @@ namespace RCF {
         void setBufferSizeLimit(std::size_t bufferSizeLimit);
         std::size_t getBufferSizeLimit();
 
-        /// Returns an object of type T from the cache. The object is returned as a std::shared_ptr<T>
-        /// and is equipped with a custom deleter, so that once the shared_ptr<T> goes out of scope,
-        /// the object is automatically returned to the cache.
-        /// If alwaysCreate is true, an object will be created if none is present in the cache.
         template<typename T>
-        void getObj(std::shared_ptr<T> & objPtr, bool alwaysCreate = true)
+        void getObj(boost::shared_ptr<T> & objPtr, bool alwaysCreate = true)
         {
             T * pt = NULL;
             void * pv = NULL;
-            std::shared_ptr<void> spv;
+            boost::shared_ptr<void> spv;
             bool pfnDeleter = false;
+
 
             {
                 ReadLock poolLock(mObjPoolMutex);
@@ -261,16 +251,31 @@ namespace RCF {
             {
                 TypeInfo ti( typeid(T) );
 
-                // Use shared_ptr custom allocator, to avoid memory allocations when a buffer is requested.
+#if BOOST_VERSION < 103400
 
-                objPtr = std::shared_ptr<T>( 
+                // 1.33.1 shared_ptr, and earlier, does not have allocator support. Consequently we
+                // have a (small) allocation each time a buffer is requested, and a corresponding
+                // deallocation when the buffer is returned to the pool.
+
+                objPtr = boost::shared_ptr<T>( 
                     pt, 
-                    std::bind(&ObjectPool::putObj, this, ti, std::placeholders::_1),
+                    boost::bind(&ObjectPool::putObj, this, ti, _1));
+
+#else
+
+                // 1.34.0 shared_ptr has allocator support. Consequently we have no allocations
+                // at all when a buffer is requested.
+
+                objPtr = boost::shared_ptr<T>( 
+                    pt, 
+                    boost::bind(&ObjectPool::putObj, this, ti, _1),
                     CbAllocator<void>(*this) );
+
+#endif
             }
             else
             {
-                objPtr = std::shared_ptr<T>(pt);
+                objPtr = boost::shared_ptr<T>(pt);
             }
         }
 
@@ -307,7 +312,7 @@ namespace RCF {
         class Ops : public I_Ops
         {
         public:
-            Ops(std::function<void(T *)> clearFunc) : 
+            Ops(boost::function1<void, T *> clearFunc) : 
                 mClearFunc(clearFunc)
             {
             }
@@ -327,10 +332,10 @@ namespace RCF {
                 }
             }
 
-            std::function<void(T *)> mClearFunc;
+            boost::function1<void, T *> mClearFunc;
         };
 
-        class ObjList : Noncopyable
+        class ObjList : boost::noncopyable
         {
         public:
             ObjList() : mMaxSize(0)
@@ -339,7 +344,7 @@ namespace RCF {
             Mutex mMutex;
             std::size_t mMaxSize;
             std::vector<void *> mVec;
-            std::unique_ptr<I_Ops> mOps;
+            boost::scoped_ptr<I_Ops> mOps;
 
             void clear()
             {
@@ -351,7 +356,7 @@ namespace RCF {
             }
         };
 
-        typedef std::shared_ptr<ObjList> ObjListPtr;
+        typedef boost::shared_ptr<ObjList> ObjListPtr;
 
         typedef std::map< TypeInfo, ObjListPtr > ObjPool;
         ReadWriteMutex mObjPoolMutex;
@@ -403,14 +408,27 @@ namespace RCF {
                 }
             }
 
-            // Use shared_ptr allocator to avoid all allocations when a buffer is requested.
+#if BOOST_VERSION < 103400
 
-            using std::placeholders::_1;
+            // 1.33.1 shared_ptr, and earlier, does not have allocator support. Consequently we
+            // have a (small) allocation each time a buffer is requested, and a corresponding
+            // deallocation when the buffer is returned to the pool.
 
-            spt = std::shared_ptr<T>( 
+            spt = boost::shared_ptr<T>( 
                 pt, 
-                std::bind(pfn, this, _1), 
+                boost::bind(pfn, this, _1));
+
+#else
+
+            // 1.34.0 shared_ptr has allocator support. Consequently we have no allocations
+            // at all when a buffer is requested.
+
+            spt = boost::shared_ptr<T>( 
+                pt, 
+                boost::bind(pfn, this, _1), 
                 CbAllocator<void>(*this) );
+
+#endif
 
         }
 

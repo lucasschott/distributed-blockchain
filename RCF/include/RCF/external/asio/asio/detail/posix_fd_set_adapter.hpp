@@ -2,7 +2,7 @@
 // detail/posix_fd_set_adapter.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,13 +17,9 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 
-#if !defined(ASIO_WINDOWS) \
-  && !defined(__CYGWIN__) \
-  && !defined(ASIO_WINDOWS_RUNTIME)
+#if !defined(BOOST_WINDOWS) && !defined(__CYGWIN__)
 
 #include <cstring>
-#include "RCF/external/asio/asio/detail/noncopyable.hpp"
-#include "RCF/external/asio/asio/detail/reactor_op_queue.hpp"
 #include "RCF/external/asio/asio/detail/socket_types.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
@@ -32,17 +28,11 @@ namespace asio {
 namespace detail {
 
 // Adapts the FD_SET type to meet the Descriptor_Set concept's requirements.
-class posix_fd_set_adapter : noncopyable
+class posix_fd_set_adapter
 {
 public:
   posix_fd_set_adapter()
     : max_descriptor_(invalid_socket)
-  {
-    using namespace std; // Needed for memset on Solaris.
-    FD_ZERO(&fd_set_);
-  }
-
-  void reset()
   {
     using namespace std; // Needed for memset on Solaris.
     FD_ZERO(&fd_set_);
@@ -60,20 +50,6 @@ public:
     return false;
   }
 
-  void set(reactor_op_queue<socket_type>& operations, op_queue<operation>& ops)
-  {
-    reactor_op_queue<socket_type>::iterator i = operations.begin();
-    while (i != operations.end())
-    {
-      reactor_op_queue<socket_type>::iterator op_iter = i++;
-      if (!set(op_iter->first))
-      {
-        asio::error_code ec(error::fd_set_failure);
-        operations.cancel_operations(op_iter, ops, ec);
-      }
-    }
-  }
-
   bool is_set(socket_type descriptor) const
   {
     return FD_ISSET(descriptor, &fd_set_) != 0;
@@ -89,18 +65,6 @@ public:
     return max_descriptor_;
   }
 
-  void perform(reactor_op_queue<socket_type>& operations,
-      op_queue<operation>& ops) const
-  {
-    reactor_op_queue<socket_type>::iterator i = operations.begin();
-    while (i != operations.end())
-    {
-      reactor_op_queue<socket_type>::iterator op_iter = i++;
-      if (is_set(op_iter->first))
-        operations.perform_operations(op_iter, ops);
-    }
-  }
-
 private:
   mutable fd_set fd_set_;
   socket_type max_descriptor_;
@@ -111,8 +75,6 @@ private:
 
 #include "RCF/external/asio/asio/detail/pop_options.hpp"
 
-#endif // !defined(ASIO_WINDOWS)
-       // && !defined(__CYGWIN__)
-       // && !defined(ASIO_WINDOWS_RUNTIME)
+#endif // !defined(BOOST_WINDOWS) && !defined(__CYGWIN__)
 
 #endif // ASIO_DETAIL_POSIX_FD_SET_ADAPTER_HPP

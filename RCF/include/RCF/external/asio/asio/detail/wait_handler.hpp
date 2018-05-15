@@ -2,7 +2,7 @@
 // detail/wait_handler.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,12 +16,10 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "RCF/external/asio/asio/detail/config.hpp"
-#include "RCF/external/asio/asio/detail/addressof.hpp"
 #include "RCF/external/asio/asio/detail/fenced_block.hpp"
 #include "RCF/external/asio/asio/detail/handler_alloc_helpers.hpp"
 #include "RCF/external/asio/asio/detail/handler_invoke_helpers.hpp"
-#include "RCF/external/asio/asio/detail/wait_op.hpp"
-#include "RCF/external/asio/asio/io_service.hpp"
+#include "RCF/external/asio/asio/detail/timer_op.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -29,26 +27,23 @@ namespace asio {
 namespace detail {
 
 template <typename Handler>
-class wait_handler : public wait_op
+class wait_handler : public timer_op
 {
 public:
   ASIO_DEFINE_HANDLER_PTR(wait_handler);
 
-  wait_handler(Handler& h)
-    : wait_op(&wait_handler::do_complete),
-      handler_(ASIO_MOVE_CAST(Handler)(h))
+  wait_handler(Handler h)
+    : timer_op(&wait_handler::do_complete),
+      handler_(h)
   {
   }
 
   static void do_complete(io_service_impl* owner, operation* base,
-      const asio::error_code& /*ec*/,
-      std::size_t /*bytes_transferred*/)
+      asio::error_code /*ec*/, std::size_t /*bytes_transferred*/)
   {
     // Take ownership of the handler object.
     wait_handler* h(static_cast<wait_handler*>(base));
-    ptr p = { asio::detail::addressof(h->handler_), h, h };
-
-    ASIO_HANDLER_COMPLETION((h));
+    ptr p = { boost::addressof(h->handler_), h, h };
 
     // Make a copy of the handler so that the memory can be deallocated before
     // the upcall is made. Even if we're not about to make an upcall, a
@@ -58,16 +53,14 @@ public:
     // deallocated the memory here.
     detail::binder1<Handler, asio::error_code>
       handler(h->handler_, h->ec_);
-    p.h = asio::detail::addressof(handler.handler_);
+    p.h = boost::addressof(handler.handler_);
     p.reset();
 
     // Make the upcall if required.
     if (owner)
     {
-      fenced_block b(fenced_block::half);
-      ASIO_HANDLER_INVOCATION_BEGIN((handler.arg1_));
+      asio::detail::fenced_block b;
       asio_handler_invoke_helpers::invoke(handler, handler.handler_);
-      ASIO_HANDLER_INVOCATION_END;
     }
   }
 

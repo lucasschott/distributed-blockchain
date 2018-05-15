@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -20,8 +20,6 @@
 
 #include <RCF/HttpsClientTransport.hpp>
 #include <RCF/HttpsServerTransport.hpp>
-#include <RCF/HttpsEndpoint.hpp>
-#include <RCF/MemStream.hpp>
 
 namespace RCF {
 
@@ -47,14 +45,14 @@ namespace RCF {
         return os.string();
     }
 
-    ServerTransportUniquePtr HttpsEndpoint::createServerTransport() const
+    ServerTransportAutoPtr HttpsEndpoint::createServerTransport() const
     {
-        return ServerTransportUniquePtr( new HttpsServerTransport(*this) );
+        return ServerTransportAutoPtr( new HttpsServerTransport(*this) );
     }
 
-    ClientTransportUniquePtr HttpsEndpoint::createClientTransport() const
+    ClientTransportAutoPtr HttpsEndpoint::createClientTransport() const
     {
-        return ClientTransportUniquePtr( new HttpsClientTransport(*this) );
+        return ClientTransportAutoPtr( new HttpsClientTransport(*this) );
     }
 
     EndpointPtr HttpsEndpoint::clone() const

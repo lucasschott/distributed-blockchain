@@ -2,7 +2,7 @@
 // detail/posix_event.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,10 +17,10 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 
-#if defined(ASIO_HAS_PTHREADS)
+#if defined(BOOST_HAS_PTHREADS) && !defined(ASIO_DISABLE_THREADS)
 
+#include <boost/assert.hpp>
 #include <pthread.h>
-#include "RCF/external/asio/asio/detail/assert.hpp"
 #include "RCF/external/asio/asio/detail/noncopyable.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
@@ -41,75 +41,47 @@ public:
     ::pthread_cond_destroy(&cond_);
   }
 
-  // Signal the event. (Retained for backward compatibility.)
+  // Signal the event.
   template <typename Lock>
   void signal(Lock& lock)
   {
-    this->signal_all(lock);
-  }
-
-  // Signal all waiters.
-  template <typename Lock>
-  void signal_all(Lock& lock)
-  {
-    ASIO_ASSERT(lock.locked());
+    BOOST_ASSERT(lock.locked());
     (void)lock;
-    state_ |= 1;
-    ::pthread_cond_broadcast(&cond_); // Ignore EINVAL.
+    signalled_ = true;
+    ::pthread_cond_signal(&cond_); // Ignore EINVAL.
   }
 
-  // Unlock the mutex and signal one waiter.
+  // Signal the event and unlock the mutex.
   template <typename Lock>
-  void unlock_and_signal_one(Lock& lock)
+  void signal_and_unlock(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
-    state_ |= 1;
-    bool have_waiters = (state_ > 1);
+    BOOST_ASSERT(lock.locked());
+    signalled_ = true;
     lock.unlock();
-    if (have_waiters)
-      ::pthread_cond_signal(&cond_); // Ignore EINVAL.
-  }
-
-  // If there's a waiter, unlock the mutex and signal it.
-  template <typename Lock>
-  bool maybe_unlock_and_signal_one(Lock& lock)
-  {
-    ASIO_ASSERT(lock.locked());
-    state_ |= 1;
-    if (state_ > 1)
-    {
-      lock.unlock();
-      ::pthread_cond_signal(&cond_); // Ignore EINVAL.
-      return true;
-    }
-    return false;
+    ::pthread_cond_signal(&cond_); // Ignore EINVAL.
   }
 
   // Reset the event.
   template <typename Lock>
   void clear(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
+    BOOST_ASSERT(lock.locked());
     (void)lock;
-    state_ &= ~std::size_t(1);
+    signalled_ = false;
   }
 
   // Wait for the event to become signalled.
   template <typename Lock>
   void wait(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
-    while ((state_ & 1) == 0)
-    {
-      state_ += 2;
+    BOOST_ASSERT(lock.locked());
+    while (!signalled_)
       ::pthread_cond_wait(&cond_, &lock.mutex().mutex_); // Ignore EINVAL.
-      state_ -= 2;
-    }
   }
 
 private:
   ::pthread_cond_t cond_;
-  std::size_t state_;
+  bool signalled_;
 };
 
 } // namespace detail
@@ -121,6 +93,6 @@ private:
 # include "RCF/external/asio/asio/detail/impl/posix_event.ipp"
 #endif // defined(ASIO_HEADER_ONLY)
 
-#endif // defined(ASIO_HAS_PTHREADS)
+#endif // defined(BOOST_HAS_PTHREADS) && !defined(ASIO_DISABLE_THREADS)
 
 #endif // ASIO_DETAIL_POSIX_EVENT_HPP

@@ -2,7 +2,7 @@
 // ip/tcp.hpp
 // ~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -48,28 +48,34 @@ public:
   /// The type of a TCP endpoint.
   typedef basic_endpoint<tcp> endpoint;
 
+  /// (Deprecated: use resolver::query.) The type of a resolver query.
+  typedef basic_resolver_query<tcp> resolver_query;
+
+  /// (Deprecated: use resolver::iterator.) The type of a resolver iterator.
+  typedef basic_resolver_iterator<tcp> resolver_iterator;
+
   /// Construct to represent the IPv4 TCP protocol.
   static tcp v4()
   {
-    return tcp(ASIO_OS_DEF(AF_INET));
+    return tcp(PF_INET);
   }
 
   /// Construct to represent the IPv6 TCP protocol.
   static tcp v6()
   {
-    return tcp(ASIO_OS_DEF(AF_INET6));
+    return tcp(PF_INET6);
   }
 
   /// Obtain an identifier for the type of the protocol.
   int type() const
   {
-    return ASIO_OS_DEF(SOCK_STREAM);
+    return SOCK_STREAM;
   }
 
   /// Obtain an identifier for the protocol.
   int protocol() const
   {
-    return ASIO_OS_DEF(IPPROTO_TCP);
+    return IPPROTO_TCP;
   }
 
   /// Obtain an identifier for the protocol family.
@@ -87,10 +93,10 @@ public:
   /// The TCP resolver type.
   typedef basic_resolver<tcp> resolver;
 
-#if !defined(ASIO_NO_IOSTREAM)
+#if !defined(BOOST_NO_IOSTREAM)
   /// The TCP iostream type.
   typedef basic_socket_iostream<tcp> iostream;
-#endif // !defined(ASIO_NO_IOSTREAM)
+#endif // !defined(BOOST_NO_IOSTREAM)
 
   /// Socket option for disabling the Nagle algorithm.
   /**
@@ -122,7 +128,7 @@ public:
   typedef implementation_defined no_delay;
 #else
   typedef asio::detail::socket_option::boolean<
-    ASIO_OS_DEF(IPPROTO_TCP), ASIO_OS_DEF(TCP_NODELAY)> no_delay;
+    IPPROTO_TCP, TCP_NODELAY> no_delay;
 #endif
 
   /// Compare two protocols for equality.
@@ -139,8 +145,8 @@ public:
 
 private:
   // Construct with a specific family.
-  explicit tcp(int protocol_family)
-    : family_(protocol_family)
+  explicit tcp(int family)
+    : family_(family)
   {
   }
 

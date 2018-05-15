@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,20 +19,45 @@
 #ifndef INCLUDE_RCF_PROTOCOL_PROTOCOL_HPP
 #define INCLUDE_RCF_PROTOCOL_PROTOCOL_HPP
 
-#include <functional>
+#include <boost/function.hpp>
 
 #include <RCF/Config.hpp>
-#include <RCF/Enums.hpp>
-#include <RCF/ErrorMsg.hpp>
-#include <RCF/MemStream.hpp>
+#include <RCF/Exception.hpp>
 #include <RCF/Tools.hpp>
 
+#include <RCF/MemStream.hpp>
+
 namespace RCF {
+
+    enum SerializationProtocol 
+    {
+
+        Sp_SfBinary       = 1,
+        Sp_SfText         = 2,
+        Sp_BsBinary       = 3,
+        Sp_BsText         = 4,
+        Sp_BsXml          = 5,
+
+        // Legacy identifiers (RCF 1.1).
+        SfBinary       = 1,
+        SfText         = 2,
+        BsBinary       = 3,
+        BsText         = 4,
+        BsXml          = 5
+
+    };
 
     class SerializationProtocolIn;
     class SerializationProtocolOut;
 
     extern const SerializationProtocol DefaultSerializationProtocol;
+
+    enum MarshalingProtocol
+    {
+        Mp_Rcf = 1
+    };
+
+    extern const MarshalingProtocol DefaultMarshalingProtocol;
 
     template<typename N>
     class Protocol
@@ -68,9 +93,7 @@ namespace RCF {
             In &operator>>(T &t)
             {
                 RCF_UNUSED_VARIABLE(t);
-                RCF_THROW(RCF::Exception(
-                    RcfError_UnknownSerializationProtocol, 
-                    N::value));
+                RCF_THROW(RCF::SerializationException(_RcfError_UnknownSerializationProtocol(N::value)))(N::value);
                 return *this;
             }
         };
@@ -97,9 +120,7 @@ namespace RCF {
             Out &operator<<(const T &t)
             {
                 RCF_UNUSED_VARIABLE(t);
-                RCF_THROW(RCF::Exception(
-                    RcfError_UnknownSerializationProtocol, 
-                    N::value));
+                RCF_THROW(RCF::SerializationException(_RcfError_UnknownSerializationProtocol(N::value)))(N::value);
                 return *this;
             }
         };
@@ -210,7 +231,7 @@ namespace RCF {
                 return *this;
             }
 
-            typedef std::function<void(IS &)> CustomizationCallback;
+            typedef boost::function1<void, IS &> CustomizationCallback;
 
             void setCustomizationCallback(CustomizationCallback customizationCallback)
             {
@@ -219,7 +240,7 @@ namespace RCF {
             }           
 
         private:
-            std::unique_ptr<IS> mAr;
+            std::auto_ptr<IS> mAr;
 
             CustomizationCallback mCustomizationCallback;
 
@@ -261,7 +282,7 @@ namespace RCF {
                 return *this;
             }
 
-            typedef std::function<void(OS &)> CustomizationCallback;
+            typedef boost::function1<void, OS &> CustomizationCallback;
 
             void setCustomizationCallback(CustomizationCallback customizationCallback)
             {
@@ -270,7 +291,7 @@ namespace RCF {
             }
 
         private:
-            std::unique_ptr<OS> mAr;
+            std::auto_ptr<OS> mAr;
 
             CustomizationCallback mCustomizationCallback;
 

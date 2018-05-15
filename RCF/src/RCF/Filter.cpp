@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -135,7 +135,7 @@ namespace RCF {
         {
             RCF_ASSERT(byteBuffer.isEmpty())(byteBuffer.getLength());
 
-            RCF_ASSERT(mInByteBufferPos < mInByteBuffer.getLength());
+            RCF_ASSERT_LT(mInByteBufferPos, mInByteBuffer.getLength());
 
             std::size_t bytesRemaining = mInByteBuffer.getLength() - mInByteBufferPos;
             std::size_t bytesToRead = RCF_MIN(bytesRemaining, bytesRequested);
@@ -164,7 +164,7 @@ namespace RCF {
         ByteBuffer mOutByteBuffer;
     };
 
-    class WriteProxy : public IdentityFilter, Noncopyable
+    class WriteProxy : public IdentityFilter, boost::noncopyable
     {
     public:
         WriteProxy() :
@@ -246,7 +246,7 @@ namespace RCF {
             bytesTransferred = writeProxy.getBytesTransferred();
             bytesTransferredTotal += bytesTransferred;
         }
-        RCF_ASSERT(bytesTransferredTotal == unfilteredDataLen);
+        RCF_ASSERT_EQ(bytesTransferredTotal , unfilteredDataLen);
 
         filteredData.resize(0);
 
@@ -400,7 +400,7 @@ namespace RCF {
 #endif
 
             default:
-                RCF_THROW( Exception( RcfError_TransportProtocolNotSupported, getTransportProtocolName(mTransportProtocol)));
+                RCF_THROW( Exception( _RcfError_TransportProtocolNotSupported( getTransportProtocolName(mTransportProtocol)) ) );
             }
         }
         if (filterPtr)

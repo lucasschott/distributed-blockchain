@@ -2,7 +2,7 @@
 // detail/hash_map.hpp
 // ~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,14 +16,14 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "RCF/external/asio/asio/detail/config.hpp"
+#include <cassert>
 #include <list>
 #include <utility>
-#include "RCF/external/asio/asio/detail/assert.hpp"
 #include "RCF/external/asio/asio/detail/noncopyable.hpp"
 
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(BOOST_WINDOWS) || defined(__CYGWIN__)
 # include "RCF/external/asio/asio/detail/socket_types.hpp"
-#endif // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#endif // defined(BOOST_WINDOWS) || defined(__CYGWIN__)
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -41,12 +41,12 @@ inline std::size_t calculate_hash_value(void* p)
     + (reinterpret_cast<std::size_t>(p) >> 3);
 }
 
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(BOOST_WINDOWS) || defined(__CYGWIN__)
 inline std::size_t calculate_hash_value(SOCKET s)
 {
   return static_cast<std::size_t>(s);
 }
-#endif // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#endif // defined(BOOST_WINDOWS) || defined(__CYGWIN__)
 
 // Note: assumes K and V are POD types.
 template <typename K, typename V>
@@ -116,9 +116,9 @@ public:
       iterator it = buckets_[bucket].first;
       if (it == values_.end())
         return values_.end();
-      iterator end_it = buckets_[bucket].last;
-      ++end_it;
-      while (it != end_it)
+      iterator end = buckets_[bucket].last;
+      ++end;
+      while (it != end)
       {
         if (it->first == k)
           return it;
@@ -137,9 +137,9 @@ public:
       const_iterator it = buckets_[bucket].first;
       if (it == values_.end())
         return it;
-      const_iterator end_it = buckets_[bucket].last;
-      ++end_it;
-      while (it != end_it)
+      const_iterator end = buckets_[bucket].last;
+      ++end;
+      while (it != end)
       {
         if (it->first == k)
           return it;
@@ -163,15 +163,15 @@ public:
       ++size_;
       return std::pair<iterator, bool>(buckets_[bucket].last, true);
     }
-    iterator end_it = buckets_[bucket].last;
-    ++end_it;
-    while (it != end_it)
+    iterator end = buckets_[bucket].last;
+    ++end;
+    while (it != end)
     {
       if (it->first == v.first)
         return std::pair<iterator, bool>(it, false);
       ++it;
     }
-    buckets_[bucket].last = values_insert(end_it, v);
+    buckets_[bucket].last = values_insert(end, v);
     ++size_;
     return std::pair<iterator, bool>(buckets_[bucket].last, true);
   }
@@ -179,8 +179,7 @@ public:
   // Erase an entry from the map.
   void erase(iterator it)
   {
-    ASIO_ASSERT(it != values_.end());
-    ASIO_ASSERT(num_buckets_ != 0);
+    assert(it != values_.end());
 
     size_t bucket = calculate_hash_value(it->first) % num_buckets_;
     bool is_first = (it == buckets_[bucket].first);
@@ -212,9 +211,9 @@ public:
     size_ = 0;
 
     // Initialise all buckets to empty.
-    iterator end_it = values_.end();
+    iterator end = values_.end();
     for (size_t i = 0; i < num_buckets_; ++i)
-      buckets_[i].first = buckets_[i].last = end_it;
+      buckets_[i].first = buckets_[i].last = end;
   }
 
 private:
@@ -244,23 +243,22 @@ private:
     if (num_buckets == num_buckets_)
       return;
     num_buckets_ = num_buckets;
-    ASIO_ASSERT(num_buckets_ != 0);
 
-    iterator end_iter = values_.end();
+    iterator end = values_.end();
 
     // Update number of buckets and initialise all buckets to empty.
     bucket_type* tmp = new bucket_type[num_buckets_];
     delete[] buckets_;
     buckets_ = tmp;
     for (std::size_t i = 0; i < num_buckets_; ++i)
-      buckets_[i].first = buckets_[i].last = end_iter;
+      buckets_[i].first = buckets_[i].last = end;
 
     // Put all values back into the hash.
     iterator iter = values_.begin();
-    while (iter != end_iter)
+    while (iter != end)
     {
       std::size_t bucket = calculate_hash_value(iter->first) % num_buckets_;
-      if (buckets_[bucket].last == end_iter)
+      if (buckets_[bucket].last == end)
       {
         buckets_[bucket].first = buckets_[bucket].last = iter++;
       }

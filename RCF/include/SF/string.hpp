@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,12 +21,15 @@
 
 #include <algorithm>
 #include <string>
-#include <type_traits>
 
-#include <RCF/Tools.hpp>
+#include <boost/config.hpp>
+
+#include <RCF/MinMax.hpp>
+
 #include <SF/Archive.hpp>
 #include <SF/Stream.hpp>
-#include <RCF/Tchar.hpp>
+
+#include <RCF/utf8/convert.hpp>
 
 namespace SF {
 
@@ -35,7 +38,7 @@ namespace SF {
     {
         if (ar.isRead())
         {
-            std::uint32_t count = 0;
+            boost::uint32_t count = 0;
             ar & count;
 
             SF::IStream &is = *ar.getIstream();
@@ -51,19 +54,18 @@ namespace SF {
                 }
             }
 
-            std::uint32_t charsRemaining = count;
-            const std::uint32_t BufferSize = 512;
+            boost::uint32_t charsRemaining = count;
+            const boost::uint32_t BufferSize = 512;
             C buffer[BufferSize];
             while (charsRemaining)
             {
-                std::uint32_t charsToRead = RCF_MIN(BufferSize, charsRemaining);
-                std::uint32_t bytesToRead = charsToRead*sizeof(C);
+                boost::uint32_t charsToRead = RCF_MIN(BufferSize, charsRemaining);
+                boost::uint32_t bytesToRead = charsToRead*sizeof(C);
 
-                if ( is.read((char *)buffer, bytesToRead) != bytesToRead )
-                {
-                    RCF::Exception e(RCF::RcfError_SfReadFailure);
-                    RCF_THROW(e);
-                }
+                RCF_VERIFY(
+                    is.read( (char *) buffer, bytesToRead) == bytesToRead,
+                    RCF::Exception(RCF::_SfError_ReadFailure()))
+                    (bytesToRead)(BufferSize)(count);
 
                 s.append(buffer, charsToRead);
                 charsRemaining -= charsToRead;
@@ -71,7 +73,7 @@ namespace SF {
         }
         else if (ar.isWrite())
         {
-            std::uint32_t count = static_cast<std::uint32_t >(s.length());
+            boost::uint32_t count = static_cast<boost::uint32_t >(s.length());
             ar & count;
             ar.getOstream()->writeRaw(
                 (char *) s.c_str(),
@@ -82,6 +84,8 @@ namespace SF {
 
     RCF_EXPORT bool getCurrentNativeWstringSerialization();
 
+#if !defined(BOOST_NO_STD_WSTRING)
+
     template<typename C, typename T, typename A>
     inline void serializeEncodedString(SF::Archive & ar, std::basic_string<C,T,A> & ws)
     {
@@ -91,7 +95,7 @@ namespace SF {
             return;
         }
 
-        RCF_ASSERT(ar.getRuntimeVersion() >= 8);
+        RCF_ASSERT_GTEQ(ar.getRuntimeVersion() , 8);
 
         if (ar.isRead())
         {
@@ -100,34 +104,35 @@ namespace SF {
             if (encodingType == 8)
             {
                 // UTF-8 serialization.
+
                 std::string s;
                 ar & s;
-                ws = RCF::stringToWstring(s);
+                ws = RcfBoost::boost::from_utf8(s);
             }
             else
             {
                 // Native wchar_t serialization.
 
-                if ( encodingType != sizeof(wchar_t) )
-                {
-                    RCF::Exception e(RCF::RcfError_WcharSizeMismatch, sizeof(wchar_t), encodingType);
-                    RCF_THROW(e);
-                }
+                RCF_VERIFY(
+                    encodingType == sizeof(wchar_t), 
+                    RCF::Exception(
+                        RCF::_RcfError_WcharSizeMismatch(sizeof(wchar_t), encodingType)));
 
                 serializeString(ar, ws);
             }
 
         }
         else if (ar.isWrite())
-        {
-            // Default behavior is to convert to UTF-8. However there is also a setting on ClientStub that allows
-            // user to instead select native wchar_t serialization.
-
-            int encodingType = 8;
-            bool useNativeWstringSerialization = getCurrentNativeWstringSerialization();
-            if ( useNativeWstringSerialization )
+        {       
+            bool useNativeWstringSerialization = SF::getCurrentNativeWstringSerialization();
+            int encodingType = sizeof(wchar_t);
+            if (useNativeWstringSerialization)
             {
                 encodingType = sizeof(wchar_t);
+            }
+            else
+            {
+                encodingType = 8;
             }
 
             ar & encodingType;
@@ -135,18 +140,18 @@ namespace SF {
             if (encodingType == 8)
             {
                 // UTF-8 serialization.
-                std::string s = RCF::wstringToString(ws);
+
+                std::string s = RcfBoost::boost::to_utf8(ws);
                 ar & s;
             }
             else
             {
                 // Native wchar_t serialization.
 
-                if ( encodingType != sizeof(wchar_t) )
-                {
-                    RCF::Exception e(RCF::RcfError_WcharSizeMismatch, sizeof(wchar_t), encodingType);
-                    RCF_THROW(e);
-                }
+                RCF_VERIFY(
+                    encodingType == sizeof(wchar_t), 
+                    RCF::Exception(
+                        RCF::_RcfError_WcharSizeMismatch(sizeof(wchar_t), encodingType)));
 
                 serializeString(ar, ws);
             }
@@ -154,13 +159,13 @@ namespace SF {
     }
 
     template<typename C, typename T, typename A>
-    inline void serializeEncodedStringOrNot(SF::Archive & ar, std::basic_string<C, T, A> & t, std::true_type *)
+    inline void serializeEncodedStringOrNot(SF::Archive & ar, std::basic_string<C, T, A> & t, RCF::TrueType *)
     {
         serializeEncodedString(ar, t);
     }
 
     template<typename C, typename T, typename A>
-    inline void serializeEncodedStringOrNot(SF::Archive & ar, std::basic_string<C, T, A> & t, std::false_type *)
+    inline void serializeEncodedStringOrNot(SF::Archive & ar, std::basic_string<C, T, A> & t, RCF::FalseType *)
     {
         serializeString(ar, t);
     }
@@ -169,9 +174,20 @@ namespace SF {
     template<typename C, typename T, typename A>
     inline void serialize_vc6(SF::Archive & ar, std::basic_string<C,T,A> & t, const unsigned int)
     {
-        typedef typename std::is_same<C, wchar_t>::type type;
+        typedef typename boost::is_same<C, wchar_t>::type type;
         serializeEncodedStringOrNot(ar, t, (type *) NULL);
     }
+
+#else
+
+    // std::basic_string (without wstring support)
+    template<typename C, typename T, typename A>
+    inline void serialize_vc6(SF::Archive & ar, std::basic_string<C,T,A> & t, const unsigned int)
+    {
+        serializeString(ar, t);
+    }
+
+#endif
 
 } // namespace SF
 

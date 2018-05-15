@@ -2,7 +2,7 @@
 // placeholders.hpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,10 +16,8 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "RCF/external/asio/asio/detail/config.hpp"
-
-#if defined(ASIO_HAS_BOOST_BIND)
-# include <boost/bind/arg.hpp>
-#endif // defined(ASIO_HAS_BOOST_BIND)
+#include <boost/bind/arg.hpp>
+#include <boost/detail/workaround.hpp>
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -40,16 +38,10 @@ unspecified bytes_transferred;
 
 /// An argument placeholder, for use with boost::bind(), that corresponds to
 /// the iterator argument of a handler for asynchronous functions such as
-/// asio::basic_resolver::async_resolve.
+/// asio::basic_resolver::resolve.
 unspecified iterator;
 
-/// An argument placeholder, for use with boost::bind(), that corresponds to
-/// the signal_number argument of a handler for asynchronous functions such as
-/// asio::signal_set::async_wait.
-unspecified signal_number;
-
-#elif defined(ASIO_HAS_BOOST_BIND)
-# if defined(__BORLANDC__) || defined(__GNUC__)
+#elif defined(__BORLANDC__) || defined(__GNUC__)
 
 inline boost::arg<1> error()
 {
@@ -66,12 +58,7 @@ inline boost::arg<2> iterator()
   return boost::arg<2>();
 }
 
-inline boost::arg<2> signal_number()
-{
-  return boost::arg<2>();
-}
-
-# else
+#else
 
 namespace detail
 {
@@ -86,7 +73,7 @@ namespace detail
   };
 }
 
-#  if defined(ASIO_MSVC) && (ASIO_MSVC < 1400)
+#if BOOST_WORKAROUND(BOOST_MSVC, < 1400)
 
 static boost::arg<1>& error
   = asio::placeholders::detail::placeholder<1>::get();
@@ -94,10 +81,8 @@ static boost::arg<2>& bytes_transferred
   = asio::placeholders::detail::placeholder<2>::get();
 static boost::arg<2>& iterator
   = asio::placeholders::detail::placeholder<2>::get();
-static boost::arg<2>& signal_number
-  = asio::placeholders::detail::placeholder<2>::get();
 
-#  else
+#else
 
 namespace
 {
@@ -107,12 +92,10 @@ namespace
     = asio::placeholders::detail::placeholder<2>::get();
   boost::arg<2>& iterator
     = asio::placeholders::detail::placeholder<2>::get();
-  boost::arg<2>& signal_number
-    = asio::placeholders::detail::placeholder<2>::get();
 } // namespace
 
-#  endif
-# endif
+#endif
+
 #endif
 
 } // namespace placeholders

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,12 +11,10 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
-
-/// \file
 
 #ifndef INCLUDE_RCF_ENDPOINT_HPP
 #define INCLUDE_RCF_ENDPOINT_HPP
@@ -24,18 +22,18 @@
 #include <memory>
 #include <string>
 
-#include <RCF/Export.hpp>
-#include <RCF/RcfFwd.hpp>
+#include <boost/shared_ptr.hpp>
 
-namespace SF
-{
-    class Archive;
-}
+#include <RCF/Exception.hpp>
+#include <RCF/SerializationProtocol.hpp>
 
 namespace RCF {
 
     class ServerTransport;
     class ClientTransport;
+
+    class Endpoint;
+    typedef boost::shared_ptr<Endpoint> EndpointPtr;
 
     /// Base class for all network endpoint types.
     class RCF_EXPORT Endpoint
@@ -48,13 +46,15 @@ namespace RCF {
         
         // *** SWIG END ***
 
-        virtual std::unique_ptr<ServerTransport>  createServerTransport() const = 0;
-        virtual std::unique_ptr<ClientTransport>  createClientTransport() const = 0;
+        virtual std::auto_ptr<ServerTransport>  createServerTransport() const = 0;
+        virtual std::auto_ptr<ClientTransport>  createClientTransport() const = 0;
         virtual EndpointPtr                     clone() const = 0;
         virtual std::string                     asString() const = 0;
         void                                    serialize(SF::Archive &) {}
     };
 
 } // namespace RCF
+
+#include <boost/version.hpp>
 
 #endif // ! INCLUDE_RCF_ENDPOINT_HPP

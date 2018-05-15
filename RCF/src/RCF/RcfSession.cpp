@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,26 +11,22 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/RcfSession.hpp>
 
-#include <RCF/AsioServerTransport.hpp>
 #include <RCF/ClientTransport.hpp>
-#include <RCF/HttpFrameFilter.hpp>
 #include <RCF/Marshal.hpp>
 #include <RCF/PerformanceData.hpp>
 #include <RCF/RcfServer.hpp>
 #include <RCF/SerializationProtocol.hpp>
-#include <RCF/ServerTransport.hpp>
 #include <RCF/ThreadLocalData.hpp>
-#include <RCF/Uuid.hpp>
 #include <RCF/Version.hpp>
 
-#include <functional>
+#include <boost/bind.hpp>
 
 #if RCF_FEATURE_SSPI==1
 #include <RCF/Schannel.hpp>
@@ -51,8 +47,9 @@ namespace RCF {
     RcfSession::RcfSession(RcfServer &server) :
         mStopCallInProgress(),
         mRcfServer(server),
-        mRuntimeVersion(RCF::getRuntimeVersion()),
-        mArchiveVersion(RCF::getArchiveVersion()),
+        mRuntimeVersion(RCF::getDefaultRuntimeVersion()),
+        mArchiveVersion(RCF::getDefaultArchiveVersion()),
+        mUseNativeWstringSerialization(RCF::getDefaultNativeWstringSerialization()),
         mEnableSfPointerTracking(false),
         mTransportFiltersLocked(),
         mFiltered(),
@@ -105,46 +102,9 @@ namespace RCF {
         return *mpNetworkSession;
     }
 
-#if RCF_FEATURE_HTTP==1
-
-    void RcfSession::getHttpFrameInfo(
-        std::string&                                            requestLine,
-        std::vector< std::pair<std::string, std::string> >&     headers)
-    {
-        TransportType tt = getTransportType();
-        if ( tt == Tt_Http || tt == Tt_Https )
-        {
-            std::vector<RCF::FilterPtr> filters;
-            RCF::AsioNetworkSession& networkSession = static_cast<RCF::AsioNetworkSession&>( getNetworkSession() );
-            networkSession.getWireFilters(filters);
-            if ( filters.size() >= 2 )
-            {
-                RCF::HttpFrameFilter & frameFilter = static_cast<RCF::HttpFrameFilter &>(*filters[1]);
-                frameFilter.getHttpFrameInfo(requestLine, headers);
-            }
-        }
-        else
-        {
-            Exception e(RcfError_NotHttpConnection);
-            RCF_THROW(e);
-        }
-    }
-
-#endif
-
     void RcfSession::setNetworkSession(NetworkSession & networkSession)
     {
         mpNetworkSession = &networkSession;
-    }
-
-    void RcfSession::setEnableNativeWstringSerialization(bool enable)
-    {
-        mEnableNativeWstringSerialization = enable;
-    }
-
-    bool RcfSession::getEnableNativeWstringSerialization() const
-    {
-        return mEnableNativeWstringSerialization;
     }
 
     void RcfSession::clearParameters()
@@ -154,6 +114,7 @@ namespace RCF {
             mpParameters->~I_Parameters();
             mpParameters = NULL;
         }
+
     }
 
     void RcfSession::setOnDestroyCallback(OnDestroyCallback onDestroyCallback)
@@ -199,51 +160,77 @@ namespace RCF {
         networkSessionPtr->postClose();
     }
 
-    RcfClientPtr RcfSession::getDefaultStubEntryPtr()
+    bool RcfSession::hasDefaultServerStub()
+    {
+        Lock lock(mMutex);
+        return mDefaultStubEntryPtr.get() ? true : false;
+    }
+
+    StubEntryPtr RcfSession::getDefaultStubEntryPtr()
     {
         Lock lock(mMutex);
         return mDefaultStubEntryPtr;
     }
 
-    void RcfSession::setDefaultStubEntryPtr(RcfClientPtr stubEntryPtr)
+    void RcfSession::setDefaultStubEntryPtr(StubEntryPtr stubEntryPtr)
     {
         Lock lock(mMutex);
         mDefaultStubEntryPtr = stubEntryPtr;
     }
 
-    void RcfSession::setCachedStubEntryPtr(RcfClientPtr stubEntryPtr)
+    void RcfSession::setCachedStubEntryPtr(StubEntryPtr stubEntryPtr)
     {
         mCachedStubEntryPtr = stubEntryPtr;
     }
 
-    void RcfSession::getMessageFilters(std::vector<FilterPtr> &filters) const
+    void RcfSession::getMessageFilters(std::vector<FilterPtr> &filters)
     {
         filters = mFilters;
     }
 
-    void RcfSession::getTransportFilters(std::vector<FilterPtr> &filters) const
+    void RcfSession::getTransportFilters(std::vector<FilterPtr> &filters)
     {
         getNetworkSession().getTransportFilters(filters);
     }
 
-    std::uint32_t RcfSession::getRuntimeVersion()
+    boost::uint32_t RcfSession::getRuntimeVersion()
     {
         return mRuntimeVersion;
     }
 
-    void RcfSession::setRuntimeVersion(std::uint32_t version)
+    void RcfSession::setRuntimeVersion(boost::uint32_t version)
     {
         mRuntimeVersion = version;
     }
 
-    std::uint32_t RcfSession::getArchiveVersion()
+    boost::uint32_t RcfSession::getArchiveVersion()
     {
         return mArchiveVersion;
     }
 
-    void RcfSession::setArchiveVersion(std::uint32_t version)
+    void RcfSession::setArchiveVersion(boost::uint32_t version)
     {
         mArchiveVersion = version;
+    }
+
+    bool RcfSession::getNativeWstringSerialization()    
+    {
+        return mUseNativeWstringSerialization;
+    }
+
+    void RcfSession::setNativeWstringSerialization(bool useNativeWstringSerialization)
+    {
+        mUseNativeWstringSerialization = useNativeWstringSerialization;
+    }
+
+    void RcfSession::setUserData(const boost::any & userData)
+    {
+        mUserData = userData;
+    }
+
+    boost::any & RcfSession::getUserData()
+    {
+        return mUserData;
     }
 
     void RcfSession::lockTransportFilters()
@@ -296,12 +283,12 @@ namespace RCF {
         mCloseSessionAfterWrite = close;
     }
 
-    std::uint32_t RcfSession::getPingBackIntervalMs()
+    boost::uint32_t RcfSession::getPingBackIntervalMs()
     {
         return mRequest.getPingBackIntervalMs();
     }
 
-    std::uint32_t RcfSession::getPingTimestamp()
+    boost::uint32_t RcfSession::getPingTimestamp()
     {
         Lock lock(mMutex);
         return mPingTimestamp;
@@ -313,17 +300,17 @@ namespace RCF {
         mPingTimestamp = RCF::getCurrentTimeMs();
     }
 
-    std::uint32_t RcfSession::getPingIntervalMs()
+    boost::uint32_t RcfSession::getPingIntervalMs()
     {
         return mPingIntervalMs;
     }
 
-    void RcfSession::setPingIntervalMs(std::uint32_t pingIntervalMs)
+    void RcfSession::setPingIntervalMs(boost::uint32_t pingIntervalMs)
     {
         mPingIntervalMs = pingIntervalMs;
     }
 
-    std::uint32_t RcfSession::getTouchTimestamp()
+    boost::uint32_t RcfSession::getTouchTimestamp()
     {
         Lock lock(mMutex);
         return mTouchTimestamp;
@@ -359,7 +346,7 @@ namespace RCF {
                     pbsPtr->registerSession(shared_from_this());
 
                 Lock lock(mIoStateMutex);
-                RCF_ASSERT( mPingBackTimerEntry.first == 0 );
+                RCF_ASSERT_EQ( mPingBackTimerEntry.first , 0 );
                 mPingBackTimerEntry = pingBackTimerEntry;
 
 #endif
@@ -369,7 +356,7 @@ namespace RCF {
 
             {
                 // TODO: something more efficient than throwing
-                Exception e(RcfError_NoPingBackService);
+                Exception e(_RcfError_NoPingBackService());
                 RCF_THROW(e);
             }
         }
@@ -408,12 +395,12 @@ namespace RCF {
 
         byteBuffers.push_back(mPingBackByteBuffer);
 
-        std::uint32_t pingBackIntervalMs = getPingBackIntervalMs();
+        boost::uint32_t pingBackIntervalMs = getPingBackIntervalMs();
 
         encodeServerError(
             mRcfServer,
             byteBuffers.front(),
-            RcfError_PingBack_Id,
+            RcfError_PingBack,
             pingBackIntervalMs,
             0);
 
@@ -481,26 +468,11 @@ namespace RCF {
     }
 
     void RcfSession::addDownloadStream(
-        std::uint32_t sessionLocalId, 
+        boost::uint32_t sessionLocalId, 
         FileStream fileStream)
     {
         Lock lock(mMutex);
         mSessionDownloads[sessionLocalId].mImplPtr = fileStream.mImplPtr;
-    }
-
-    std::string RcfSession::configureDownload(const Path& downloadPath, BandwidthQuotaPtr quotaPtr)
-    {
-        std::string downloadId = generateUuid();
-        TransferInfo info;
-        info.mPath = downloadPath;
-        info.mBandwidthQuotaPtr = quotaPtr;
-        mRcfServer.mFileTransferServicePtr->addFileTransfer(downloadId, info);
-        return downloadId;
-    }
-
-    Path RcfSession::getUploadPath(const std::string& uploadId)
-    {
-        return mRcfServer.getUploadPath(uploadId);
     }
 
 #else
@@ -512,7 +484,7 @@ namespace RCF {
 
 #endif
 
-    tstring RcfSession::getClientUserName()
+    tstring RcfSession::getClientUsername()
     {
         return mClientUsername;
     }
@@ -565,41 +537,6 @@ namespace RCF {
         return getNetworkSession().getServerTransport().getTransportType();
     }
 
-#if RCF_FEATURE_SSPI==1
-
-    PCtxtHandle RcfSession::getTransportSecurityContext() const
-    {
-        std::vector<FilterPtr> wireFilters;
-        getNetworkSession().getWireFilters(wireFilters);
-        for ( auto filterPtr : wireFilters )
-        {
-            SspiFilter * pSspiFilter = dynamic_cast<SspiFilter *>(filterPtr.get());
-            if ( pSspiFilter )
-            {
-                return pSspiFilter->getSecurityContext();
-            }
-        }
-        return NULL;
-    }
-
-    PCtxtHandle RcfSession::getTransportProtocolSecurityContext() const
-    {
-        std::vector<FilterPtr> transportFilters;
-        getTransportFilters(transportFilters);
-        for ( auto filterPtr : transportFilters )
-        {
-            SspiFilter * pSspiFilter = dynamic_cast<SspiFilter *>(filterPtr.get());
-            if ( pSspiFilter )
-            {
-                return pSspiFilter->getSecurityContext();
-            }
-        }
-        return NULL;
-    }
-
-#endif
-
-
     bool RcfSession::getIsCallbackSession() const
     {
         return mIsCallbackSession;
@@ -610,9 +547,9 @@ namespace RCF {
         mIsCallbackSession = isCallbackSession;
     }
 
-    RemoteCallInfo RcfSession::getRemoteCallRequest() const
+    RemoteCallRequest RcfSession::getRemoteCallRequest() const
     {
-        return RemoteCallInfo(mRequest);
+        return RemoteCallRequest(mRequest);
     }
 
     time_t RcfSession::getConnectedAtTime() const
@@ -641,12 +578,12 @@ namespace RCF {
         return mRemoteCallCount;
     }
 
-    std::uint64_t RcfSession::getTotalBytesReceived() const
+    boost::uint64_t RcfSession::getTotalBytesReceived() const
     {
         return mpNetworkSession->getTotalBytesReceived();
     }
 
-    std::uint64_t RcfSession::getTotalBytesSent() const
+    boost::uint64_t RcfSession::getTotalBytesSent() const
     {
         return mpNetworkSession->getTotalBytesSent();
     }

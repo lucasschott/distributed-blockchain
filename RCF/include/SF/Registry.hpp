@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,12 +11,10 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
-
-/// @file
 
 #ifndef INCLUDE_SF_REGISTRY_HPP
 #define INCLUDE_SF_REGISTRY_HPP
@@ -25,12 +23,13 @@
 #include <string>
 #include <typeinfo>
 
-#include <memory>
+#include <boost/any.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <RCF/Export.hpp>
 #include <RCF/ThreadLibrary.hpp>
 
-#include <RCF/Tools.hpp>
+#include <SF/Tools.hpp>
 
 namespace SF {
 
@@ -41,7 +40,7 @@ namespace SF {
     class I_SerializerPolymorphic;
     class I_SerializerAny;
 
-    class RCF_EXPORT Registry : Noncopyable
+    class RCF_EXPORT Registry : boost::noncopyable
     {
     private:
         Registry();
@@ -52,12 +51,12 @@ namespace SF {
 
         typedef std::map<
             std::pair<Rtti, Rtti>, 
-            std::shared_ptr<I_SerializerPolymorphic> > 
+            boost::shared_ptr<I_SerializerPolymorphic> > 
                                                     RttiToSerializerPolymorphic;
 
         typedef std::map<
             Rtti, 
-            std::shared_ptr<I_SerializerAny> > 
+            boost::shared_ptr<I_SerializerAny> > 
                                                     RttiToSerializerAny;
         
         TypenameToRtti                              mTypenameToRtti;
@@ -119,7 +118,7 @@ namespace SF {
             return getSerializerPolymorphic( (Base *) 0, derivedTypeName);
         }
 
-        I_SerializerAny * getAnySerializer(const std::string &which);
+        I_SerializerAny &getAnySerializer(const std::string &which);
 
         bool isTypeRegistered(const std::string &typeName);
 
@@ -160,33 +159,24 @@ namespace SF {
 } // namespace SF
 
 #include <SF/SerializePolymorphic.hpp>
-//#include <SF/SerializeAny.hpp>
+#include <SF/SerializeAny.hpp>
 #include <SF/Serializer.hpp>
 
 namespace SF {
 
-    /// Register a type T with SF runtime. When serializing polymorphic objects of 
-    /// type T, typeName will be written to the archive along with the serialized representation
-    /// of T, to allow correct instantiation of type T when deserializing through a base type.
-    template<typename T>
-    void registerType(const std::string &typeName)
+    template<typename Type>
+    inline void registerType(const std::string &typeName)
     {
-        Registry::getSingleton().registerType( (T *) 0, typeName);
+        Registry::getSingleton().registerType( (Type *) 0, typeName);
     }
 
-    /// Register a base/derived relationship with the SF runtime. Allows SF to locate the correct
-    /// serialization function for objects of type Derived, when Derived objects are serialized 
-    /// through a Base pointer.
     template<typename Base, typename Derived>
-    void registerBaseAndDerived()
+    inline void registerBaseAndDerived()
     {
         Registry::getSingleton().registerBaseAndDerived( 
             (Base *) 0, 
             (Derived *) 0);
     }
-
-    template<typename T>
-    class SerializerAny;
 
     template<typename Type>
     void Registry::registerAny(Type *)
@@ -195,11 +185,9 @@ namespace SF {
         RCF_UNUSED_VARIABLE(lock);
         Rtti typeRtti = typeid(Type).name();
         
-        if ( mRttiToTypename.find(typeRtti) == mRttiToTypename.end() )
-        {
-            RCF::Exception e(RCF::RcfError_SfTypeRegistration, typeRtti);
-            RCF_THROW(e);
-        }
+        RCF_VERIFY(
+            mRttiToTypename.find(typeRtti) != mRttiToTypename.end(),
+            RCF::Exception( RCF::_SfError_TypeRegistration(typeRtti) ));
 
         mRttiToSerializerAny[typeRtti].reset(new SerializerAny<Type>());
     }
@@ -249,11 +237,11 @@ namespace SF {
             mRttiToSerializerPolymorphic.find(baseDerivedRtti) 
             == mRttiToSerializerPolymorphic.end())
         {
-            RCF::Exception e( RCF::RcfError_SfBaseDerivedRegistration, 
+            RCF::Exception e( RCF::_SfError_BaseDerivedRegistration(
                 baseRtti, 
-                derivedRtti);
+                derivedRtti));
 
-            RCF_THROW(e);
+            RCF_THROW(e)(derivedTypeName);
         }
         return *mRttiToSerializerPolymorphic[ baseDerivedRtti ];
     }

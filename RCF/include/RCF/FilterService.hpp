@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,12 +21,12 @@
 
 #include <map>
 
-#include <memory>
+#include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <RCF/Filter.hpp>
 #include <RCF/Export.hpp>
 #include <RCF/Service.hpp>
-#include <RCF/Tools.hpp>
 
 namespace RCF {
 
@@ -35,7 +35,7 @@ namespace RCF {
 
     class RCF_EXPORT FilterService :
         public I_Service,
-        Noncopyable
+        boost::noncopyable
     {
     public:
         FilterService();
@@ -46,17 +46,17 @@ namespace RCF {
             FilterFactoryPtr filterFactoryPtr,
             const std::vector<int> &filterIds);
 
-        std::int32_t RequestTransportFilters(const std::vector<std::int32_t> &filterIds);
+        boost::int32_t RequestTransportFilters(const std::vector<boost::int32_t> &filterIds);
 
         // No longer supported. Just a stub to return an error message.
-        std::int32_t QueryForTransportFilters(const std::vector<std::int32_t> &filterIds);
+        boost::int32_t QueryForTransportFilters(const std::vector<boost::int32_t> &filterIds);
 
         FilterFactoryPtr getFilterFactoryPtr(int filterId);
    
     private:
         void setTransportFilters(
             RcfSession &session,
-            std::shared_ptr<std::vector<FilterPtr> > filters);
+            boost::shared_ptr<std::vector<FilterPtr> > filters);
 
         void onServerStart(RcfServer &server);
         void onServerStop(RcfServer &server);
@@ -66,7 +66,7 @@ namespace RCF {
         ReadWriteMutex                              mFilterFactoryMapMutex;
     };
 
-    typedef std::shared_ptr<FilterService> FilterServicePtr;
+    typedef boost::shared_ptr<FilterService> FilterServicePtr;
 
 } // namespace RCF
 

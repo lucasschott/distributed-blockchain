@@ -2,7 +2,7 @@
 // ip/address_v6.hpp
 // ~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,15 +17,15 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 #include <string>
-#include "RCF/external/asio/asio/detail/array.hpp"
+#include <boost/array.hpp>
 #include "RCF/external/asio/asio/detail/socket_types.hpp"
 #include "RCF/external/asio/asio/detail/winsock_init.hpp"
 #include "RCF/external/asio/asio/error_code.hpp"
 #include "RCF/external/asio/asio/ip/address_v4.hpp"
 
-#if !defined(ASIO_NO_IOSTREAM)
+#if !defined(BOOST_NO_IOSTREAM)
 # include <iosfwd>
-#endif // !defined(ASIO_NO_IOSTREAM)
+#endif // !defined(BOOST_NO_IOSTREAM)
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -45,15 +45,7 @@ class address_v6
 {
 public:
   /// The type used to represent an address as an array of bytes.
-  /**
-   * @note This type is defined in terms of the C++0x template @c std::array
-   * when it is available. Otherwise, it uses @c boost:array.
-   */
-#if defined(GENERATING_DOCUMENTATION)
-  typedef array<unsigned char, 16> bytes_type;
-#else
-  typedef asio::detail::array<unsigned char, 16> bytes_type;
-#endif
+  typedef boost::array<unsigned char, 16> bytes_type;
 
   /// Default constructor.
   ASIO_DECL address_v6();
@@ -65,18 +57,8 @@ public:
   /// Copy constructor.
   ASIO_DECL address_v6(const address_v6& other);
 
-#if defined(ASIO_HAS_MOVE)
-  /// Move constructor.
-  ASIO_DECL address_v6(address_v6&& other);
-#endif // defined(ASIO_HAS_MOVE)
-
   /// Assign from another address.
   ASIO_DECL address_v6& operator=(const address_v6& other);
-
-#if defined(ASIO_HAS_MOVE)
-  /// Move-assign from another address.
-  ASIO_DECL address_v6& operator=(address_v6&& other);
-#endif // defined(ASIO_HAS_MOVE)
 
   /// The scope ID of the address.
   /**
@@ -213,7 +195,7 @@ private:
   unsigned long scope_id_;
 };
 
-#if !defined(ASIO_NO_IOSTREAM)
+#if !defined(BOOST_NO_IOSTREAM)
 
 /// Output an address as a string.
 /**
@@ -231,7 +213,7 @@ template <typename Elem, typename Traits>
 std::basic_ostream<Elem, Traits>& operator<<(
     std::basic_ostream<Elem, Traits>& os, const address_v6& addr);
 
-#endif // !defined(ASIO_NO_IOSTREAM)
+#endif // !defined(BOOST_NO_IOSTREAM)
 
 } // namespace ip
 } // namespace asio

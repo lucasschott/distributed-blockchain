@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,7 +21,7 @@
 
 #include <RCF/Export.hpp>
 
-#include <cstdint>
+#include <boost/cstdint.hpp>
 
 namespace RCF {
 
@@ -30,16 +30,16 @@ namespace RCF {
     public:
 
         Timer();
-        Timer(std::uint32_t startTimeMs);
+        Timer(boost::uint32_t startTimeMs);
 
-        bool                elapsed(std::uint32_t durationMs);
+        bool                elapsed(boost::uint32_t durationMs);
         void                restart();
-        void                restart(std::uint32_t startTimeMs);
-        std::uint32_t       getStartTimeMs();
-        std::uint32_t       getDurationMs();
+        void                restart(boost::uint32_t startTimeMs);
+        boost::uint32_t     getStartTimeMs();
+        boost::uint32_t     getDurationMs();
 
     private:
-        std::uint32_t mStartTimeMs;
+        boost::uint32_t mStartTimeMs;
     };
 
 }

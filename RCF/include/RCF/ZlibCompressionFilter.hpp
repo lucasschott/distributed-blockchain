@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -22,9 +22,10 @@
 #include <memory>
 #include <vector>
 
+#include <boost/noncopyable.hpp>
+
 #include <RCF/Filter.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/Tools.hpp>
 
 namespace RCF {
 
@@ -34,11 +35,9 @@ namespace RCF {
     class ZlibCompressionWriteFilter;
     class ZlibDll;
 
-    std::string zlibError(int zErr);
-
     class RCF_EXPORT ZlibCompressionFilterBase : 
         public Filter, 
-        Noncopyable
+        boost::noncopyable
     {
     public:
         ZlibCompressionFilterBase(bool stateful, bool serverSide);
@@ -67,8 +66,8 @@ namespace RCF {
         friend class ZlibCompressionReadFilter;
         friend class ZlibCompressionWriteFilter;
 
-        std::shared_ptr<ZlibCompressionReadFilter> mReadFilter;
-        std::shared_ptr<ZlibCompressionWriteFilter> mWriteFilter;
+        boost::shared_ptr<ZlibCompressionReadFilter> mReadFilter;
+        boost::shared_ptr<ZlibCompressionWriteFilter> mWriteFilter;
     };
 
     class ServerSide {};
@@ -79,10 +78,15 @@ namespace RCF {
     private:
         friend class ZlibStatelessCompressionFilterFactory;
 
-        ZlibStatelessCompressionFilter(ServerSide *);
+        ZlibStatelessCompressionFilter(
+            ServerSide *) :
+                ZlibCompressionFilterBase(false, true)
+        {}
 
     public:
-        ZlibStatelessCompressionFilter();
+        ZlibStatelessCompressionFilter() :
+                ZlibCompressionFilterBase(false, false)
+        {}        
 
         int getFilterId() const;
     };
@@ -93,15 +97,20 @@ namespace RCF {
     private:
         friend class ZlibStatefulCompressionFilterFactory;
 
-        ZlibStatefulCompressionFilter(ServerSide *);
+        ZlibStatefulCompressionFilter(
+            ServerSide *) :
+                ZlibCompressionFilterBase(true, true)
+        {}
 
     public:
-        ZlibStatefulCompressionFilter();
+        ZlibStatefulCompressionFilter() :
+                ZlibCompressionFilterBase(true, false)
+        {}
 
         int getFilterId() const;
     };
    
-    class RCF_EXPORT ZlibStatelessCompressionFilterFactory :
+    class ZlibStatelessCompressionFilterFactory : 
         public FilterFactory
     {
     public:
@@ -111,7 +120,7 @@ namespace RCF {
         int getFilterId();
     };
 
-    class RCF_EXPORT ZlibStatefulCompressionFilterFactory :
+    class ZlibStatefulCompressionFilterFactory : 
         public FilterFactory
     {
     public:
@@ -122,10 +131,10 @@ namespace RCF {
     };
 
     typedef ZlibStatefulCompressionFilter               ZlibCompressionFilter;
-    typedef std::shared_ptr<ZlibCompressionFilter>    ZlibCompressionFilterPtr;
+    typedef boost::shared_ptr<ZlibCompressionFilter>    ZlibCompressionFilterPtr;
 
     typedef ZlibStatefulCompressionFilterFactory                ZlibCompressionFilterFactory;
-    typedef std::shared_ptr<ZlibCompressionFilterFactory>     ZlibCompressionFilterFactoryPtr;
+    typedef boost::shared_ptr<ZlibCompressionFilterFactory>     ZlibCompressionFilterFactoryPtr;
 
 } // namespace RCF
 

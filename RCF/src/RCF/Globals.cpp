@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,14 +19,13 @@
 #include <RCF/Globals.hpp>
 
 #include <RCF/DynamicLib.hpp>
-#include <RCF/Enums.hpp>
 #include <RCF/Tools.hpp>
 
 namespace RCF {
 
     Globals * gpGlobals = NULL;
 
-    Globals & globals()
+    Globals & getGlobals()
     {
         RCF_ASSERT(gpGlobals);
         return *gpGlobals;
@@ -35,11 +34,10 @@ namespace RCF {
     Globals::Globals() :
         mpZlibDll(NULL),
         mpOpenSslDll(NULL),
-        mpOpenSslCryptoDll(NULL),
-        mSimultaneousPublishLimit(100)
+        mpOpenSslCryptoDll(NULL)
     {
 
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
 
         mZlibDllName            = "zlib.dll";
         mOpenSslDllName         = "ssleay32.dll";
@@ -52,45 +50,13 @@ namespace RCF {
         mOpenSslCryptoDllName   = "libcrypto.so";
 
 #endif
-
-        mFileStreamDefaultDownloadDirectory = "RCF-Downloads";
     }
 
     Globals::~Globals()
     {
-        releaseZlibDll();
-        releaseOpenSslCryptoDll();
-        releaseOpenSslDll();
-    }
-
-    void Globals::setDefaultSslImplementation(SslImplementation sslImplementation)
-    {
-        mDefaultSslImplementation = sslImplementation;
-    }
-
-    SslImplementation Globals::getDefaultSslImplementation()
-    {
-        return mDefaultSslImplementation;
-    }
-
-    void Globals::setDefaultConnectTimeoutMs(unsigned int connectTimeoutMs)
-    {
-        mClientConnectTimeoutMs = connectTimeoutMs;
-    }
-
-    unsigned int Globals::getDefaultConnectTimeoutMs()
-    {
-        return mClientConnectTimeoutMs;
-    }
-
-    void Globals::setDefaultRemoteCallTimeoutMs(unsigned int remoteCallTimeoutMs)
-    {
-        mClientRemoteCallTimeoutMs = remoteCallTimeoutMs;
-    }
-
-    unsigned int Globals::getDefaultRemoteCallTimeoutMs()
-    {
-        return mClientRemoteCallTimeoutMs;
+        deleteZlibDll();
+        deleteOpenSslCryptoDll();
+        deleteOpenSslDll();
     }
 
     void Globals::setZlibDllName(const std::string & dllName)
@@ -125,7 +91,7 @@ namespace RCF {
 
 #if RCF_FEATURE_ZLIB==0
 
-    void Globals::releaseZlibDll()
+    void Globals::deleteZlibDll()
     {
         RCF_ASSERT(!mpZlibDll);
     }
@@ -134,36 +100,16 @@ namespace RCF {
 
 #if RCF_FEATURE_OPENSSL==0
 
-    void Globals::releaseOpenSslDll()
+    void Globals::deleteOpenSslDll()
     {
         RCF_ASSERT(!mpOpenSslDll);
     }
 
-    void Globals::releaseOpenSslCryptoDll()
+    void Globals::deleteOpenSslCryptoDll()
     {
         RCF_ASSERT(!mpOpenSslCryptoDll);
     }
 
 #endif
-
-    void Globals::setSimultaneousPublishLimit(std::size_t simultaneousPublishLimit)
-    {
-        mSimultaneousPublishLimit = simultaneousPublishLimit;
-    }
-
-    std::size_t Globals::getSimultaneousPublishLimit() const
-    {
-        return mSimultaneousPublishLimit;
-    }
-
-    void Globals::setFileStreamDefaultDownloadDirectory(const std::string & downloadDirectory)
-    {
-        mFileStreamDefaultDownloadDirectory = downloadDirectory;
-    }
-
-    std::string Globals::getFileStreamDefaultDownloadDirectory()
-    {
-        return mFileStreamDefaultDownloadDirectory;
-    }
 
 } // namespace RCF

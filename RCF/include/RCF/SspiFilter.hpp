@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,22 +19,24 @@
 #ifndef INCLUDE_RCF_SSPIFILTER_HPP
 #define INCLUDE_RCF_SSPIFILTER_HPP
 
-#include <functional>
 #include <memory>
 
-#include <RCF/ByteBuffer.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
+
 #include <RCF/Filter.hpp>
-#include <RCF/RcfFwd.hpp>
 #include <RCF/RecursionLimiter.hpp>
 #include <RCF/Export.hpp>
+#include <RCF/RcfSession.hpp>
+#include <RCF/RecursionLimiter.hpp>
+#include <RCF/Tools.hpp>
 
-#include <RCF/Tchar.hpp>
+#include <RCF/util/Tchar.hpp>
 
 #ifndef SECURITY_WIN32
 #define SECURITY_WIN32
 #endif
 
-#include <windows.h>
 #include <security.h>
 #include <WinCrypt.h>
 #include <tchar.h>
@@ -49,28 +51,18 @@ namespace RCF {
     typedef RCF::tstring tstring;
 
     class SspiFilter;
-    class RcfSession;
-    class ClientStub;
 
-    typedef std::shared_ptr<SspiFilter> SspiFilterPtr;
+    typedef boost::shared_ptr<SspiFilter> SspiFilterPtr;
 
-    /// Allows the server side of a SSPI-based connection to impersonate the client. Only applicable to connections using NTLM, Kerberos or Negotiate transport protocols.
     class RCF_EXPORT SspiImpersonator
     {
     public:
         SspiImpersonator(SspiFilterPtr sspiFilterPtr);
-
-        /// Impersonates the client associated with the RcfSession. Impersonation lasts until revertToSelf() is called, or the Win32NamedPipeImpersonator object is destroyed.
         SspiImpersonator(RcfSession & session);
-
-        /// Destroys the SspiImpersonator object, and ceases any impersonation.
         ~SspiImpersonator();
 
         bool impersonate();
-
-        /// Ceases impersonation of the named pipe client.
         void revertToSelf() const;
-
     private:
         SspiFilterPtr mSspiFilterPtr;
     };
@@ -90,6 +82,7 @@ namespace RCF {
 
     class Certificate;
     class Win32Certificate;
+    typedef boost::shared_ptr<Win32Certificate> Win32CertificatePtr;
     
     class RCF_EXPORT SspiFilter : public Filter
     {
@@ -108,9 +101,9 @@ namespace RCF {
 
         typedef SspiImpersonator Impersonator;
 
-        Win32CertificatePtr getPeerCertificate();
+        typedef boost::function<bool(Certificate *)> CertificateValidationCb;
 
-        PCtxtHandle getSecurityContext() const;
+        Win32CertificatePtr getPeerCertificate();
 
     protected:
 
@@ -260,7 +253,7 @@ namespace RCF {
         // Schannel-specific members.
         Win32CertificatePtr                     mLocalCertPtr;
         Win32CertificatePtr                     mRemoteCertPtr;
-        CertificateValidationCallback           mCertValidationCallback;
+        CertificateValidationCb                 mCertValidationCallback;
         DWORD                                   mEnabledProtocols;
         tstring                                 mAutoCertValidation;
         const std::size_t                       mReadAheadChunkSize;
@@ -321,7 +314,7 @@ namespace RCF {
 
     // filter factories
 
-    class RCF_EXPORT NtlmFilterFactory : public FilterFactory
+    class NtlmFilterFactory : public FilterFactory
     {
     public:
         FilterPtr createFilter(RcfServer & server);

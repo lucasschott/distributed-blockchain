@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -45,7 +45,7 @@ namespace RCF {
             timeval timeout = {0};
             timeout.tv_sec = timeoutMs/1000;
             timeout.tv_usec = 1000*(timeoutMs%1000);
-            RCF_ASSERT(timeout.tv_usec >= 0);
+            RCF_ASSERT_GTEQ(timeout.tv_usec , 0);
             
             int selectRet = bRead ?
                 Platform::OS::BsdSockets::select(fd+1, &fdSet, NULL, NULL, &timeout) :
@@ -75,7 +75,7 @@ namespace RCF {
 
                 RCF_VERIFY(
                     ret == 0, 
-                    Exception(RcfError_Socket, "getsockopt()", osError(err)));
+                    Exception(_RcfError_Socket("getsockopt()"), err, RcfSubsystem_Os));
 
                 if (errorOpt == 0)
                 {
@@ -133,7 +133,7 @@ namespace RCF {
         }
     }
 
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
 
     void appendWsabuf(std::vector<WSABUF> &wsabufs, const ByteBuffer &byteBuffer)
     {
@@ -175,7 +175,7 @@ namespace RCF {
             std::vector<WSABUF> &wsabufs = tlcWsabufs.get();
 
             forEachByteBuffer(
-                [&](const ByteBuffer & buffer) { appendWsabuf(wsabufs, buffer); },
+                boost::bind(&appendWsabuf, boost::ref(wsabufs), _1),
                 byteBuffers,
                 bytesSent,
                 bytesToSend);
@@ -183,7 +183,7 @@ namespace RCF {
             int count = 0;
             int myErr = 0;
 
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
             {
                 DWORD cbSent = 0;
                 int ret = WSASend(
@@ -210,7 +210,7 @@ namespace RCF {
 
             if (count >= 0)
             {
-                RCF_ASSERT(count <= static_cast<int>(bytesRemaining));
+                RCF_ASSERT_LTEQ(count , static_cast<int>(bytesRemaining));
 
                 bytesRemaining -= count;
                 bytesSent += count;
@@ -343,11 +343,6 @@ namespace RCF {
         return connected;
     }
 
-#ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning( disable : 4996 )  // warning C4996: 'ctime' was declared deprecated
-#endif
-
     std::pair<std::string, std::vector<std::string> > getLocalIps()
     {
         std::vector<char> hostname(80);
@@ -356,14 +351,14 @@ namespace RCF {
 
         RCF_VERIFY(
             ret != -1, 
-            RCF::Exception(RcfError_Socket, "gethostname()", osError(err)));
+            RCF::Exception( _RcfError_Socket("gethostname()"), err, RcfSubsystem_Os))(ret);
 
         hostent *phe = gethostbyname(&hostname[0]);
         err = Platform::OS::BsdSockets::GetLastError();
 
         RCF_VERIFY(
             phe, 
-            RCF::Exception(RcfError_Socket, "gethostbyname()", osError(err)));
+            RCF::Exception( _RcfError_Socket("gethostbyname()"), err, RCF::RcfSubsystem_Os));
 
         std::vector<std::string> ips;
         for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
@@ -374,9 +369,5 @@ namespace RCF {
 
         return std::make_pair( std::string(&hostname[0]), ips);
     }
-
-#ifdef _MSC_VER
-#pragma warning( pop )
-#endif
 
 } // namespace RCF

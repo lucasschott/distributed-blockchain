@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -22,6 +22,8 @@
 #include <RCF/Exception.hpp>
 #include <RCF/InitDeinit.hpp>
 #include <RCF/Tools.hpp>
+
+#include <boost/version.hpp>
 
 namespace RCF {
 
@@ -44,7 +46,7 @@ namespace RCF {
     }
 
     ObjectPool::ObjectPool() : 
-        mObjPoolMutex(),
+        mObjPoolMutex(WriterPriority),
         mBufferCountLimit(10) ,
         mBufferSizeLimit(1024*1024*10)
     {
@@ -146,7 +148,7 @@ namespace RCF {
 
     void ObjectPool::putMemOstream(MemOstream * pOs)
     {
-        std::unique_ptr<MemOstream> osPtr(pOs);
+        std::auto_ptr<MemOstream> osPtr(pOs);
         std::size_t bufferSize = osPtr->capacity();
         pOs->clear(); // freezing may have set error state
         pOs->rewind();
@@ -161,7 +163,7 @@ namespace RCF {
 
     void ObjectPool::putReallocBuffer(ReallocBuffer * pRb)
     {
-        std::unique_ptr<ReallocBuffer> rbPtr(pRb);
+        std::auto_ptr<ReallocBuffer> rbPtr(pRb);
         std::size_t bufferSize = rbPtr->capacity();
         pRb->resize(0);
 

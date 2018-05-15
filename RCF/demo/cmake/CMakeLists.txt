@@ -35,7 +35,7 @@ ELSEIF(MSVC)
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
     ENDIF()
 ELSE()
-    SET(RCF_LIBS pthread dl stdc++fs uuid)	
+    SET(RCF_LIBS pthread dl)
 ENDIF()
 
 

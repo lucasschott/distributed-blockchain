@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -23,15 +23,11 @@
 #include <RCF/AsioBuffers.hpp>
 #include <RCF/ClientStub.hpp>
 #include <RCF/Exception.hpp>
-#include <RCF/OverlappedAmi.hpp>
 #include <RCF/RcfServer.hpp>
 #include <RCF/ThreadLocalData.hpp>
 #include <RCF/TimedBsdSockets.hpp>
 
 #include <RCF/AsioServerTransport.hpp>
-#include <RCF/Log.hpp>
-
-#include <chrono>
 
 namespace RCF {
 
@@ -79,14 +75,109 @@ namespace RCF {
         RCF_DTOR_END
     }
 
+#ifdef BOOST_WINDOWS
+
+    // return -2 for timeout, -1 for error, 0 for ready
+    int pollSocketWithProgressMwfmo(
+        const ClientProgressPtr &clientProgressPtr,
+        ClientProgress::Activity activity,
+        unsigned int endTimeMs,
+        int fd,
+        int &err,
+        bool bRead)
+    {
+        RCF_UNUSED_VARIABLE(err);
+        RCF_UNUSED_VARIABLE(activity);
+
+        ClientStub & clientStub = *getTlsClientStubPtr();
+
+        int uiMessageFilter = clientProgressPtr->mUiMessageFilter;
+
+        HANDLE readEvent = WSACreateEvent();
+        using namespace boost::multi_index::detail;
+        scope_guard WSACloseEventGuard = make_guard(WSACloseEvent, readEvent);
+        RCF_UNUSED_VARIABLE(WSACloseEventGuard);
+
+        int nRet = WSAEventSelect(fd, readEvent, bRead ? FD_READ : FD_WRITE);
+        RCF_ASSERT_EQ(nRet , 0);
+        RCF_UNUSED_VARIABLE(nRet);
+        HANDLE handles[] = { readEvent };
+
+        while (true)
+        {
+            unsigned int timeoutMs = generateTimeoutMs(endTimeMs);
+            timeoutMs = clientStub.generatePollingTimeout(timeoutMs);
+
+            DWORD dwRet = MsgWaitForMultipleObjects(
+                1, 
+                handles, 
+                0, 
+                timeoutMs, 
+                uiMessageFilter);
+
+            if (dwRet == WAIT_TIMEOUT)
+            {
+                clientStub.onPollingTimeout();
+
+                if (generateTimeoutMs(endTimeMs) == 0)
+                {
+                    return -2;
+                }
+            }
+            else if (dwRet == WAIT_OBJECT_0)
+            {
+                // File descriptor is ready to be read.
+                return 0;
+            }
+            else if (dwRet == WAIT_OBJECT_0 + 1)
+            {
+                clientStub.onUiMessage();                
+            }
+        }
+    }
+
+#endif
+
     PollingFunctor::PollingFunctor(
         ClientProgressPtr clientProgressPtr,
-        RemoteCallPhase activity,
+        ClientProgress::Activity activity,
         unsigned int endTimeMs) :
             mClientProgressPtr(clientProgressPtr),
             mActivity(activity),
             mEndTimeMs(endTimeMs)
     {}
+
+#ifdef BOOST_WINDOWS
+
+    // On Windows, the user may have requested callbacks on UI messages, in 
+    // which case we'll need to use MsgWaitForMultipleObjects() rather than
+    // plain old select().
+
+    int PollingFunctor::operator()(int fd, int &err, bool bRead)
+    {
+        if (
+            mClientProgressPtr.get() &&
+            mClientProgressPtr->mTriggerMask & ClientProgress::UiMessage)
+        {
+            return pollSocketWithProgressMwfmo(
+                mClientProgressPtr,
+                mActivity,
+                mEndTimeMs,
+                fd,
+                err,
+                bRead);
+        }
+        else
+        {
+            return pollSocket(
+                mEndTimeMs,
+                fd,
+                err,
+                bRead);
+        }
+    }
+
+#else
 
     int PollingFunctor::operator()(int fd, int &err, bool bRead)
     {
@@ -96,6 +187,8 @@ namespace RCF {
             err,
             bRead);
     }
+
+#endif
 
     std::size_t BsdClientTransport::implRead(
         const ByteBuffer &byteBuffer,
@@ -109,7 +202,7 @@ namespace RCF {
 
         PollingFunctor pollingFunctor(
             mClientProgressPtr,
-            RemoteCallPhase::Rcp_Receive,
+            ClientProgress::Receive,
             mEndTimeMs);
 
         RCF_LOG_4()(byteBuffer.getLength())(bytesToRead) << "BsdClientTransport - initiating read from socket.";
@@ -130,7 +223,7 @@ namespace RCF {
         {
         case -2:
             {
-                Exception e(RcfError_ClientReadTimeout);
+                Exception e(_RcfError_ClientReadTimeout());
                 RCF_THROW(e);
             }
             break;
@@ -138,8 +231,9 @@ namespace RCF {
         case -1:
             {
                 Exception e(
-                    RcfError_ClientReadFail,
-                    osError(err));
+                    _RcfError_ClientReadFail(),
+                    err,
+                    RcfSubsystem_Os);
             
                 RCF_THROW(e);
             }
@@ -147,14 +241,16 @@ namespace RCF {
 
         case  0:
             {
-                Exception e(RcfError_PeerDisconnect);
+                Exception e(_RcfError_PeerDisconnect());
                 RCF_THROW(e);
             }
             break;
 
         default:
             
-            RCF_ASSERT(0 < ret && ret <= static_cast<int>(bytesRequested));
+            RCF_ASSERT(
+                0 < ret && ret <= static_cast<int>(bytesRequested))
+                (ret)(bytesRequested);
         }
 
         return ret;
@@ -194,9 +290,9 @@ namespace RCF {
         }
         else
         {
-            std::uint32_t nowMs = getCurrentTimeMs();
-            std::uint32_t timeoutMs = mEndTimeMs - nowMs;
-            mAsioTimerPtr->expires_from_now(std::chrono::milliseconds(timeoutMs));
+            boost::uint32_t nowMs = getCurrentTimeMs();
+            boost::uint32_t timeoutMs = mEndTimeMs - nowMs;
+            mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
             mAsioTimerPtr->async_wait( AmiTimerHandler(mOverlappedPtr) );
         }
 
@@ -211,12 +307,12 @@ namespace RCF {
         if (mWriteCounter > 1)
         {
             // Put a breakpoint here to catch write buffer fragmentation.
-            RCF_LOG_4()(mWriteCounter) << "Detected multiple outgoing write buffers.";
+            mWriteCounter = mWriteCounter;
         }
 
         PollingFunctor pollingFunctor(
             mClientProgressPtr,
-            RemoteCallPhase::Rcp_Send,
+            ClientProgress::Send,
             mEndTimeMs);
 
         int err = 0;
@@ -238,7 +334,7 @@ namespace RCF {
         {
         case -2:
             {
-                Exception e(RcfError_ClientWriteTimeout);
+                Exception e(_RcfError_ClientWriteTimeout());
                 RCF_THROW(e);
             }
             break;
@@ -246,8 +342,9 @@ namespace RCF {
         case -1:
             {
                 Exception e(
-                    RcfError_ClientWriteFail,
-                    osError(err));
+                    _RcfError_ClientWriteFail(),
+                    err,
+                    RcfSubsystem_Os);
             
                 RCF_THROW(e);
             }
@@ -255,14 +352,17 @@ namespace RCF {
 
         case 0:
             {
-                Exception e(RcfError_PeerDisconnect);            
+                Exception e(_RcfError_PeerDisconnect());            
                 RCF_THROW(e);
             }
             break;
 
         default:
             
-            RCF_ASSERT(0 < ret && ret <= static_cast<int>(lengthByteBuffers(byteBuffers)));            
+            RCF_ASSERT(
+                0 < ret && ret <= static_cast<int>(lengthByteBuffers(byteBuffers)))
+                (ret)(lengthByteBuffers(byteBuffers));            
+
             onTimedSendCompleted(ret, 0);
         }
 
@@ -277,7 +377,7 @@ namespace RCF {
         if (mWriteCounter > 1)
         {
             // Put a breakpoint here to catch write buffer fragmentation.
-            RCF_LOG_4()(mWriteCounter) << "Detected multiple outgoing write buffers.";
+            mWriteCounter = mWriteCounter;
         }
 
         RecursiveLock lock(mOverlappedPtr->mMutex);
@@ -320,9 +420,9 @@ namespace RCF {
         }
         else
         {
-            std::uint32_t nowMs = getCurrentTimeMs();
-            std::uint32_t timeoutMs = mEndTimeMs - nowMs;
-            mAsioTimerPtr->expires_from_now( std::chrono::milliseconds(timeoutMs) );
+            boost::uint32_t nowMs = getCurrentTimeMs();
+            boost::uint32_t timeoutMs = mEndTimeMs - nowMs;
+            mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
             mAsioTimerPtr->async_wait( AmiTimerHandler(mOverlappedPtr) );
         }
 

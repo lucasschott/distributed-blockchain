@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -23,11 +23,9 @@
 #include <RCF/HttpFrameFilter.hpp>
 #include <RCF/ObjectPool.hpp>
 #include <RCF/RcfServer.hpp>
-#include <RCF/RcfSession.hpp>
 #include <RCF/Tools.hpp>
-#include <RCF/Log.hpp>
 
-#ifndef RCF_WINDOWS
+#ifndef BOOST_WINDOWS
 #define strnicmp strncasecmp
 #define stricmp strcasecmp
 #endif
@@ -150,7 +148,7 @@ namespace RCF {
             RCF_ASSERT(byteBuffer.getLength() == 1);
             HttpFrameFilter & httpFrame = static_cast<HttpFrameFilter &>(*mpPostFilter);
             const std::string & httpSessionId = httpFrame.getHttpSessionId();
-            std::uint32_t httpSessionIndex = httpFrame.getHttpSessionIndex();
+            boost::uint32_t httpSessionIndex = httpFrame.getHttpSessionIndex();
 
             bool allowCreateHttpSession = false;
             if ( httpSessionIndex == 1 )
@@ -176,10 +174,9 @@ namespace RCF {
 
             if ( mHttpSessionPtr->mHttpSessionIndex + 1 != httpSessionIndex )
             {
-                Exception exc(
-                    RcfError_HttpRequestSessionIndex, 
+                Exception exc(Error(_RcfError_HttpRequestSessionIndex(
                     mHttpSessionPtr->mHttpSessionIndex + 1, 
-                    httpSessionIndex);
+                    httpSessionIndex)));
 
                 httpFrame.onError(exc);
             }
@@ -242,11 +239,6 @@ namespace RCF {
         }
     }
 
-#ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning( disable : 4996 )  // warning C4996: 'ctime' was declared deprecated
-#endif
-
     void HttpSessionFilter::onWriteCompleted(std::size_t bytesTransferred)
     {
         // Issue zero-byte read back down to the network layer.
@@ -264,10 +256,6 @@ namespace RCF {
             mpPostFilter->read(ByteBuffer(), 0);
         }
     }
-
-#ifdef _MSC_VER
-#pragma warning( pop )
-#endif
 
     int HttpSessionFilter::getFilterId() const
     {

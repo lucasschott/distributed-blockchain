@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -23,9 +23,8 @@
 
 #include <SF/DataPtr.hpp>
 #include <SF/Encoding.hpp>
-#include <RCF/MemStream.hpp>
 #include <SF/Node.hpp>
-#include <RCF/Tools.hpp>
+#include <SF/Tools.hpp>
 
 #include <vector>
 
@@ -203,8 +202,8 @@ namespace SF {
     IStream::IStream() :
         mpIs(),
         mArchiveSize(0),
-        mRuntimeVersion( RCF::getRuntimeVersion() ),
-        mArchiveVersion( RCF::getArchiveVersion() ),
+        mRuntimeVersion( RCF::getDefaultRuntimeVersion() ),
+        mArchiveVersion( RCF::getDefaultArchiveVersion() ),
         mIgnoreVersionStamp(false),
         mpSerializationProtocolIn(NULL)
     {
@@ -259,7 +258,7 @@ namespace SF {
         mRuntimeVersion = runtimeVersion;
         if (mRuntimeVersion == 0)
         {
-            mRuntimeVersion = RCF::getRuntimeVersion();
+            mRuntimeVersion = RCF::getDefaultRuntimeVersion();
         }
 
         mArchiveVersion = archiveVersion;
@@ -301,8 +300,8 @@ namespace SF {
                     UInt32 bytesRead = read( &(buffer[0]), count);
                     if (bytesRead != static_cast<UInt32>(count))
                     {
-                        RCF::Exception e(RCF::RcfError_SfDataFormat);
-                        RCF_THROW(e);
+                        RCF::Exception e(RCF::_SfError_DataFormat());
+                        RCF_THROW(e)(bytesRead)(count);
                     }
                     continue;
                 }
@@ -406,8 +405,8 @@ namespace SF {
 
             default:
                 {
-                    RCF::Exception e(RCF::RcfError_SfDataFormat);
-                    RCF_THROW(e);
+                    RCF::Exception e(RCF::_SfError_DataFormat());
+                    RCF_THROW(e)(byte);
                 }
             }
         }
@@ -439,8 +438,8 @@ namespace SF {
         read_byte(byte);
         if (byte != End)
         {
-            RCF::Exception e(RCF::RcfError_SfDataFormat);
-            RCF_THROW(e);
+            RCF::Exception e(RCF::_SfError_DataFormat(), "no end symbol");
+            RCF_THROW(e)(byte);
         }
     }
 
@@ -456,7 +455,7 @@ namespace SF {
         {
             // Integers less than 128 are stored as a single byte.
             Byte8 byte = 0;
-            std::uint8_t ubyte = 0;
+            boost::uint8_t ubyte = 0;
             UInt32 bytesRead = read_byte(byte);
             ubyte = byte;
             if (ubyte < 128)
@@ -484,8 +483,8 @@ namespace SF {
         mpIs->read(pBytes, nLength);
         if (mpIs->fail())
         {
-            RCF::Exception e(RCF::RcfError_SfReadFailure);
-            RCF_THROW(e);
+            RCF::Exception e(RCF::_SfError_ReadFailure());
+            RCF_THROW(e)(nLength)(mpIs->gcount());
         }
         return static_cast<UInt32>(mpIs->gcount());
     }
@@ -561,8 +560,8 @@ namespace SF {
 
     OStream::OStream() : 
         mpOs(), 
-        mRuntimeVersion( RCF::getRuntimeVersion() ), 
-        mArchiveVersion( RCF::getArchiveVersion() ),
+        mRuntimeVersion( RCF::getDefaultRuntimeVersion() ), 
+        mArchiveVersion( RCF::getDefaultArchiveVersion() ),
         mSuppressArchiveMetadata(false),
         mArchiveMetadataWritten(false),
         mpSerializationProtocolOut(NULL)
@@ -611,7 +610,7 @@ namespace SF {
         mRuntimeVersion = runtimeVersion;
         if (mRuntimeVersion == 0)
         {
-            mRuntimeVersion = RCF::getRuntimeVersion();
+            mRuntimeVersion = RCF::getDefaultRuntimeVersion();
         }
 
         mArchiveVersion = archiveVersion;
@@ -705,7 +704,7 @@ namespace SF {
 
     UInt32 OStream::write_int(UInt32 n)
     {
-        static_assert( sizeof(n) == 4 , "Invalid data type size assumption.");
+        BOOST_STATIC_ASSERT( sizeof(n) == 4 );
 
         if (mRuntimeVersion < 9)
         {
@@ -713,31 +712,31 @@ namespace SF {
             mpOs->write( reinterpret_cast<char*>(&n), 4);
             if (mpOs->fail())
             {
-                RCF::Exception e(RCF::RcfError_SfWriteFailure);
-                RCF_THROW(e);
+                RCF::Exception e(RCF::_SfError_WriteFailure());
+                RCF_THROW(e)(n);
             }
             return 4;
         }
         else
         {
             // Integers less than 128 are stored as a single byte.
-            if (n <= 127)
+            if (0 <= n && n <= 127)
             {
-                std::uint8_t byte = static_cast<std::uint8_t>(n);
+                boost::uint8_t byte = static_cast<boost::uint8_t>(n);
                 write_byte(byte);
                 return 1;
             }
             else
             {
-                std::uint8_t byte = 128;
+                boost::uint8_t byte = 128;
                 write_byte(byte);
             
                 RCF::machineToNetworkOrder(&n, 4, 1);
                 mpOs->write( reinterpret_cast<char*>(&n), 4);
                 if (mpOs->fail())
                 {
-                    RCF::Exception e(RCF::RcfError_SfWriteFailure);
-                    RCF_THROW(e);
+                    RCF::Exception e(RCF::_SfError_WriteFailure());
+                    RCF_THROW(e)(n);
                 }
                 return 5;
             }
@@ -749,7 +748,7 @@ namespace SF {
         mpOs->write(&byte, 1);
         if (mpOs->fail())
         {
-            RCF::Exception e(RCF::RcfError_SfWriteFailure);
+            RCF::Exception e(RCF::_SfError_WriteFailure());
             RCF_THROW(e);
         }
         return 1;
@@ -762,8 +761,8 @@ namespace SF {
         mpOs->write(pBytes, nLength);
         if (mpOs->fail())
         {
-            RCF::Exception e(RCF::RcfError_SfWriteFailure);
-            RCF_THROW(e);
+            RCF::Exception e(RCF::_SfError_WriteFailure());
+            RCF_THROW(e)(nLength);
         }
         bytesWritten += nLength;
         return bytesWritten;
@@ -774,8 +773,8 @@ namespace SF {
         mpOs->write(pBytes, nLength);
         if (mpOs->fail())
         {
-            RCF::Exception e(RCF::RcfError_SfWriteFailure);
-            RCF_THROW(e);
+            RCF::Exception e(RCF::_SfError_WriteFailure());
+            RCF_THROW(e)(nLength);
         }
         return nLength;
     }

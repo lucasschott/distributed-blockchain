@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,7 +21,6 @@
 #include <RCF/AmiIoHandler.hpp>
 #include <RCF/AmiThreadPool.hpp>
 #include <RCF/ClientStub.hpp>
-#include <RCF/OverlappedAmi.hpp>
 #include <RCF/ThreadLibrary.hpp>
 #include <RCF/ThreadLocalData.hpp>
 #include <RCF/Win32NamedPipeEndpoint.hpp>
@@ -29,8 +28,6 @@
 #include <RCF/RcfServer.hpp>
 
 #include <RCF/Asio.hpp>
-
-#include <chrono>
 
 namespace RCF {
 
@@ -47,7 +44,7 @@ namespace RCF {
     {
         HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
         DWORD dwErr = GetLastError();
-        RCF_VERIFY(hEvent, Exception(RcfError_Pipe, osError(dwErr)));
+        RCF_VERIFY( hEvent, Exception(_RcfError_Pipe(), dwErr));
 
         mhEvent = hEvent;
         mpSec = rhs.mpSec;
@@ -73,7 +70,7 @@ namespace RCF {
         
         HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
         DWORD dwErr = GetLastError();
-        RCF_VERIFY(hEvent, Exception(RcfError_Pipe, osError(dwErr)));
+        RCF_VERIFY( hEvent, Exception(_RcfError_Pipe(), dwErr));
 
         mhEvent = hEvent;
     }
@@ -105,7 +102,7 @@ namespace RCF {
 
         HANDLE hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
         DWORD dwErr = GetLastError();
-        RCF_VERIFY(hEvent, Exception(RcfError_Pipe, osError(dwErr)));
+        RCF_VERIFY( hEvent, Exception(_RcfError_Pipe(), dwErr));
 
         mhEvent = hEvent;
 
@@ -121,7 +118,7 @@ namespace RCF {
             {
                 BOOL ok = CloseHandle(mhEvent);
                 DWORD dwErr = GetLastError();
-                RCF_VERIFY(ok, Exception(RcfError_Pipe, osError(dwErr)));
+                RCF_VERIFY(ok, Exception(_RcfError_Pipe(), dwErr));
             }
         RCF_DTOR_END
     }
@@ -131,9 +128,9 @@ namespace RCF {
         return Tt_Win32NamedPipe;
     }
 
-    ClientTransportUniquePtr Win32NamedPipeClientTransport::clone() const
+    ClientTransportAutoPtr Win32NamedPipeClientTransport::clone() const
     {
-        return ClientTransportUniquePtr(new Win32NamedPipeClientTransport(*this));
+        return ClientTransportAutoPtr(new Win32NamedPipeClientTransport(*this));
     }
 
     HANDLE Win32NamedPipeClientTransport::getNativeHandle() const
@@ -193,7 +190,14 @@ namespace RCF {
             BOOL ok = CloseHandle(mhPipe);
             DWORD dwErr = GetLastError();
 
-            RCF_VERIFY(ok, Exception(RcfError_Pipe, dwErr));
+            RCF_VERIFY(
+                ok,
+                Exception(
+                    _RcfError_Pipe(),
+                    dwErr,
+                    RcfSubsystem_Os,
+                    "CloseHandle() failed"))
+                (mhPipe);
         }
 
         mhPipe = INVALID_HANDLE_VALUE;
@@ -229,14 +233,20 @@ namespace RCF {
             }
             else if (hPipe == INVALID_HANDLE_VALUE)
             {
-                Exception e(RcfError_ClientConnectFail, osError(dwErr));
+                Exception e(
+                    _RcfError_ClientConnectFail(),
+                    dwErr,
+                    RcfSubsystem_Os,
+                    "CreateFile() failed");
 
                 RCF_THROW(e);
             }                       
         }
         if (hPipe == INVALID_HANDLE_VALUE)
         {
-            Exception e(RcfError_ClientConnectTimeout, timeoutMs, Win32NamedPipeEndpoint(mPipeName).asString());
+            Exception e(_RcfError_ClientConnectTimeout(
+                timeoutMs, 
+                Win32NamedPipeEndpoint(mPipeName).asString()));
 
             RCF_THROW(e);
         }
@@ -336,7 +346,7 @@ namespace RCF {
 
         BOOL ok = ResetEvent(mhEvent);
         DWORD dwErr = GetLastError();
-        RCF_VERIFY(ok, Exception(RcfError_Pipe, osError(dwErr)));
+        RCF_VERIFY(ok, Exception(_RcfError_Pipe(), dwErr));
 
         OVERLAPPED overlapped = {0};
         overlapped.hEvent = mhEvent;
@@ -358,7 +368,7 @@ namespace RCF {
             RCF_VERIFY( 
                 dwErr == ERROR_IO_PENDING ||
                 dwErr == ERROR_MORE_DATA,
-                Exception(RcfError_ClientReadFail, osError(dwErr)));
+                Exception(_RcfError_ClientReadFail(), dwErr));
         }
 
         ClientStub & clientStub = *getTlsClientStubPtr();
@@ -366,7 +376,7 @@ namespace RCF {
         DWORD dwRet = WAIT_TIMEOUT;
         while (dwRet == WAIT_TIMEOUT)
         {
-            std::uint32_t timeoutMs = generateTimeoutMs(mEndTimeMs);
+            boost::uint32_t timeoutMs = generateTimeoutMs(mEndTimeMs);
             timeoutMs = clientStub.generatePollingTimeout(timeoutMs);
 
             dwRet = WaitForSingleObject(overlapped.hEvent, timeoutMs);
@@ -374,23 +384,24 @@ namespace RCF {
 
             RCF_VERIFY( 
                 dwRet == WAIT_OBJECT_0 || dwRet == WAIT_TIMEOUT, 
-                Exception(RcfError_Pipe, osError(dwErr)));
+                Exception(_RcfError_Pipe(), dwErr));
 
             RCF_VERIFY(
                 generateTimeoutMs(mEndTimeMs),
-                Exception(RcfError_ClientReadTimeout));
+                Exception(_RcfError_ClientReadTimeout()))
+                (mEndTimeMs)(bytesToRead);
 
             if (dwRet == WAIT_TIMEOUT)
             {
                 clientStub.onPollingTimeout();
             }
         }
-        RCF_ASSERT(dwRet == WAIT_OBJECT_0);
+        RCF_ASSERT_EQ(dwRet , WAIT_OBJECT_0);
 
         dwRead = 0;
         ok = GetOverlappedResult(mhPipe, &overlapped, &dwRead, FALSE);
         dwErr = GetLastError();
-        RCF_VERIFY(ok && dwRead > 0, Exception(RcfError_Pipe, osError(dwErr)));
+        RCF_VERIFY(ok && dwRead > 0, Exception(_RcfError_Pipe(), dwErr));
 
         onTimedRecvCompleted(dwRead, 0);
 
@@ -479,9 +490,9 @@ namespace RCF {
             }
             else
             {
-                std::uint32_t nowMs = getCurrentTimeMs();
-                std::uint32_t timeoutMs = mEndTimeMs - nowMs;
-                mAsioTimerPtr->expires_from_now(std::chrono::milliseconds(timeoutMs));
+                boost::uint32_t nowMs = getCurrentTimeMs();
+                boost::uint32_t timeoutMs = mEndTimeMs - nowMs;
+                mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
                 mAsioTimerPtr->async_wait( AmiTimerHandler(mOverlappedPtr) );
             }
         }
@@ -525,12 +536,12 @@ namespace RCF {
 
         DWORD dwErr = GetLastError();
 
-        RCF_VERIFY(ok, Exception(RcfError_ClientWriteFail, osError(dwErr)));
+        RCF_VERIFY(ok, Exception(_RcfError_ClientWriteFail(), dwErr));
 
         // Strangely, WriteFile() sometimes returns 1, but at the same time a much too big value in count.
-        RCF_VERIFY(count <= dwBytesToWrite, Exception(RcfError_ClientWriteFail, osError(dwErr)));
+        RCF_VERIFY(count <= dwBytesToWrite, Exception(_RcfError_ClientWriteFail(), dwErr))(count)(dwBytesToWrite);
 
-        RCF_VERIFY(count > 0, Exception(RcfError_ClientWriteFail, osError(dwErr)));
+        RCF_VERIFY(count > 0, Exception(_RcfError_ClientWriteFail(), dwErr))(count)(dwBytesToWrite);
 
         onTimedSendCompleted( RCF_MIN(count, dwBytesToWrite), 0);
 
@@ -593,9 +604,9 @@ namespace RCF {
             }
             else
             {
-                std::uint32_t nowMs = getCurrentTimeMs();
-                std::uint32_t timeoutMs = mEndTimeMs - nowMs;
-                mAsioTimerPtr->expires_from_now(std::chrono::milliseconds(timeoutMs));
+                boost::uint32_t nowMs = getCurrentTimeMs();
+                boost::uint32_t timeoutMs = mEndTimeMs - nowMs;
+                mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
                 mAsioTimerPtr->async_wait( AmiTimerHandler(mOverlappedPtr) );
             }
         }

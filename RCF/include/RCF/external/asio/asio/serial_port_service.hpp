@@ -2,7 +2,7 @@
 // serial_port_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,7 +22,6 @@
 
 #include <cstddef>
 #include <string>
-#include "RCF/external/asio/asio/async_result.hpp"
 #include "RCF/external/asio/asio/detail/reactive_serial_port_service.hpp"
 #include "RCF/external/asio/asio/detail/win_iocp_serial_port_service.hpp"
 #include "RCF/external/asio/asio/error.hpp"
@@ -63,18 +62,11 @@ public:
   typedef service_impl_type::implementation_type implementation_type;
 #endif
 
-  /// (Deprecated: Use native_handle_type.) The native handle type.
+  /// The native handle type.
 #if defined(GENERATING_DOCUMENTATION)
   typedef implementation_defined native_type;
 #else
-  typedef service_impl_type::native_handle_type native_type;
-#endif
-
-  /// The native handle type.
-#if defined(GENERATING_DOCUMENTATION)
-  typedef implementation_defined native_handle_type;
-#else
-  typedef service_impl_type::native_handle_type native_handle_type;
+  typedef service_impl_type::native_type native_type;
 #endif
 
   /// Construct a new serial port service for the specified io_service.
@@ -84,28 +76,17 @@ public:
   {
   }
 
+  /// Destroy all user-defined handler objects owned by the service.
+  void shutdown_service()
+  {
+    service_impl_.shutdown_service();
+  }
+
   /// Construct a new serial port implementation.
   void construct(implementation_type& impl)
   {
     service_impl_.construct(impl);
   }
-
-#if defined(ASIO_HAS_MOVE) || defined(GENERATING_DOCUMENTATION)
-  /// Move-construct a new serial port implementation.
-  void move_construct(implementation_type& impl,
-      implementation_type& other_impl)
-  {
-    service_impl_.move_construct(impl, other_impl);
-  }
-
-  /// Move-assign from another serial port implementation.
-  void move_assign(implementation_type& impl,
-      serial_port_service& other_service,
-      implementation_type& other_impl)
-  {
-    service_impl_.move_assign(impl, other_service.service_impl_, other_impl);
-  }
-#endif // defined(ASIO_HAS_MOVE) || defined(GENERATING_DOCUMENTATION)
 
   /// Destroy a serial port implementation.
   void destroy(implementation_type& impl)
@@ -122,9 +103,9 @@ public:
 
   /// Assign an existing native handle to a serial port.
   asio::error_code assign(implementation_type& impl,
-      const native_handle_type& handle, asio::error_code& ec)
+      const native_type& native_handle, asio::error_code& ec)
   {
-    return service_impl_.assign(impl, handle, ec);
+    return service_impl_.assign(impl, native_handle, ec);
   }
 
   /// Determine whether the handle is open.
@@ -140,16 +121,10 @@ public:
     return service_impl_.close(impl, ec);
   }
 
-  /// (Deprecated: Use native_handle().) Get the native handle implementation.
+  /// Get the native handle implementation.
   native_type native(implementation_type& impl)
   {
-    return service_impl_.native_handle(impl);
-  }
-
-  /// Get the native handle implementation.
-  native_handle_type native_handle(implementation_type& impl)
-  {
-    return service_impl_.native_handle(impl);
+    return service_impl_.native(impl);
   }
 
   /// Cancel all asynchronous operations associated with the handle.
@@ -192,19 +167,10 @@ public:
 
   /// Start an asynchronous write.
   template <typename ConstBufferSequence, typename WriteHandler>
-  ASIO_INITFN_RESULT_TYPE(WriteHandler,
-      void (asio::error_code, std::size_t))
-  async_write_some(implementation_type& impl,
-      const ConstBufferSequence& buffers,
-      ASIO_MOVE_ARG(WriteHandler) handler)
+  void async_write_some(implementation_type& impl,
+      const ConstBufferSequence& buffers, WriteHandler handler)
   {
-    detail::async_result_init<
-      WriteHandler, void (asio::error_code, std::size_t)> init(
-        ASIO_MOVE_CAST(WriteHandler)(handler));
-
-    service_impl_.async_write_some(impl, buffers, init.handler);
-
-    return init.result.get();
+    service_impl_.async_write_some(impl, buffers, handler);
   }
 
   /// Read some data from the stream.
@@ -217,28 +183,13 @@ public:
 
   /// Start an asynchronous read.
   template <typename MutableBufferSequence, typename ReadHandler>
-  ASIO_INITFN_RESULT_TYPE(ReadHandler,
-      void (asio::error_code, std::size_t))
-  async_read_some(implementation_type& impl,
-      const MutableBufferSequence& buffers,
-      ASIO_MOVE_ARG(ReadHandler) handler)
+  void async_read_some(implementation_type& impl,
+      const MutableBufferSequence& buffers, ReadHandler handler)
   {
-    detail::async_result_init<
-      ReadHandler, void (asio::error_code, std::size_t)> init(
-        ASIO_MOVE_CAST(ReadHandler)(handler));
-
-    service_impl_.async_read_some(impl, buffers, init.handler);
-
-    return init.result.get();
+    service_impl_.async_read_some(impl, buffers, handler);
   }
 
 private:
-  // Destroy all user-defined handler objects owned by the service.
-  void shutdown_service()
-  {
-    service_impl_.shutdown_service();
-  }
-
   // The platform-specific implementation.
   service_impl_type service_impl_;
 };

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,21 +21,6 @@
 #include <RCF/RcfServer.hpp>
 
 namespace RCF {
-
-    ServerObjectHolder::ServerObjectHolder() :
-        mTimeoutMs(0),
-        mLastTouchMs(0),
-        mUseCount(0)
-    {
-    }
-
-    ServerObjectHolder::ServerObjectHolder(const Any & serverObject, std::uint32_t timeoutMs) :
-        mTimeoutMs(timeoutMs),
-        mLastTouchMs(0),
-        mUseCount(0),
-        mServerObject(serverObject)
-    {
-    }
 
 #ifdef _MSC_VER
 #pragma warning( push )
@@ -74,7 +59,7 @@ namespace RCF {
 
     void ServerObjectService::onTimer()
     {
-        std::uint32_t nowMs = getCurrentTimeMs();
+        boost::uint32_t nowMs = getCurrentTimeMs();
         {
             Lock lock(mMutex);
             ServerObjectMap::iterator iter = mServerObjectMap.begin();

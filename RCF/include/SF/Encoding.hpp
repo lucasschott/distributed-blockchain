@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -24,7 +24,7 @@
 #include <RCF/Exception.hpp>
 
 #include <SF/DataPtr.hpp>
-#include <RCF/Tools.hpp>
+#include <SF/Tools.hpp>
 
 namespace SF {
 
@@ -87,7 +87,7 @@ namespace SF {
 
     RCF_EXPORT 
     void decodeInt(
-        std::uint32_t &           value, 
+        boost::uint32_t &           value, 
         const RCF::ByteBuffer &     byteBuffer, 
         std::size_t &               pos);
     

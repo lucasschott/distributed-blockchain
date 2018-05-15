@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -28,10 +28,7 @@ namespace RCF {
 
     class UdpClientTransport;
 
-    typedef std::shared_ptr<UdpClientTransport> UdpClientTransportPtr;
-
-    class ReallocBuffer;
-    typedef std::shared_ptr<ReallocBuffer> ReallocBufferPtr;
+    typedef boost::shared_ptr<UdpClientTransport> UdpClientTransportPtr;
    
     class RCF_EXPORT UdpClientTransport : 
         public ClientTransport, 
@@ -53,7 +50,7 @@ namespace RCF {
 
          TransportType getTransportType();
 
-        ClientTransportUniquePtr 
+        ClientTransportAutoPtr 
                         clone() const;
 
         EndpointPtr     getEndpointPtr() const;
@@ -85,7 +82,7 @@ namespace RCF {
 
         int             getNativeHandle() const;
 
-        void            setTimer(std::uint32_t timeoutMs, ClientTransportCallback *pClientStub);
+        void            setTimer(boost::uint32_t timeoutMs, ClientTransportCallback *pClientStub);
 
         bool            supportsTransportFilters()
         {

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,9 +19,7 @@
 #ifndef INCLUDE_RCF_UNIXLOCALSERVERTRANSPORT_HPP
 #define INCLUDE_RCF_UNIXLOCALSERVERTRANSPORT_HPP
 
-#include <RCF/Asio.hpp>
-
-#ifdef RCF_WINDOWS
+#if defined(BOOST_WINDOWS)
 #error Unix domain sockets not supported on Windows.
 #endif
 
@@ -36,7 +34,7 @@ namespace RCF {
 
     using ASIO_NS::local::stream_protocol;
     typedef stream_protocol::socket                 UnixLocalSocket;
-    typedef std::shared_ptr<UnixLocalSocket>      UnixLocalSocketPtr;
+    typedef boost::shared_ptr<UnixLocalSocket>      UnixLocalSocketPtr;
 
     class UnixLocalServerTransport;
 
@@ -63,7 +61,7 @@ namespace RCF {
 
         void implCloseAfterWrite();
 
-        ClientTransportUniquePtr implCreateClientTransport();
+        ClientTransportAutoPtr implCreateClientTransport();
 
         void implTransferNativeFrom(ClientTransport & clientTransport);
 
@@ -90,7 +88,7 @@ namespace RCF {
         
         void implOpen();
 
-        ClientTransportUniquePtr implCreateClientTransport(
+        ClientTransportAutoPtr implCreateClientTransport(
             const Endpoint &endpoint);
 
         std::string getPipeName() const;

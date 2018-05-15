@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,17 +11,14 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/UnixLocalClientTransport.hpp>
 
-#include <RCF/AmiIoHandler.hpp>
 #include <RCF/Exception.hpp>
-#include <RCF/Log.hpp>
-#include <RCF/OverlappedAmi.hpp>
 #include <RCF/TimedBsdSockets.hpp>
 #include <RCF/Tools.hpp>
 #include <RCF/UnixLocalEndpoint.hpp>
@@ -78,9 +75,9 @@ namespace RCF {
         return Tt_UnixNamedPipe;
     }
 
-    ClientTransportUniquePtr UnixLocalClientTransport::clone() const
+    ClientTransportAutoPtr UnixLocalClientTransport::clone() const
     {
-        return ClientTransportUniquePtr( new UnixLocalClientTransport(*this) );
+        return ClientTransportAutoPtr( new UnixLocalClientTransport(*this) );
     }
 
     void UnixLocalClientTransport::implConnect(unsigned int timeoutMs)
@@ -97,7 +94,7 @@ namespace RCF {
 
         PollingFunctor pollingFunctor(
             mClientProgressPtr,
-            RemoteCallPhase::Rcp_Connect,
+            ClientProgress::Connect,
             mEndTimeMs);
 
         sockaddr_un remote;
@@ -108,7 +105,7 @@ namespace RCF {
         
         RCF_VERIFY(
             mFileName.length() < pipeNameLimit, 
-            Exception(RcfError_PipeNameTooLong, mFileName, pipeNameLimit));
+            Exception(_RcfError_PipeNameTooLong(mFileName, pipeNameLimit)))(pipeNameLimit);
 
         strcpy(remote.sun_path, mFileName.c_str());
 //#ifdef SUN_LEN
@@ -135,16 +132,16 @@ namespace RCF {
 
             if (err == 0)
             {
-                Exception e( RcfError_ClientConnectTimeout, 
+                Exception e( _RcfError_ClientConnectTimeout(
                     timeoutMs, 
-                    mFileName);
+                    mFileName));
 
                 RCF_THROW(e);
             }
             else
             {
-                Exception e(RcfError_ClientConnectFail, osError(err));
-                RCF_THROW(e);
+                Exception e( _RcfError_ClientConnectFail(), err, RcfSubsystem_Os);
+                RCF_THROW(e)(mFileName);
             }
         }
     }
@@ -199,14 +196,15 @@ namespace RCF {
     {
         e = Exception();
 
-        RCF_ASSERT(mFd == INVALID_SOCKET);
+        RCF_ASSERT_EQ(mFd , INVALID_SOCKET);
 
         mFd = static_cast<int>( ::socket(AF_UNIX, SOCK_STREAM, 0) );
         int err = Platform::OS::BsdSockets::GetLastError();
 
         RCF_VERIFY(
             mFd != -1,
-            Exception(RcfError_Socket, "socket()", osError(err)));
+            Exception(
+            _RcfError_Socket("socket()"), err, RcfSubsystem_Os));
 
         Platform::OS::BsdSockets::setblocking(mFd, false);
 
@@ -268,7 +266,11 @@ namespace RCF {
 
             RCF_VERIFY(
                 ret == 0,
-                Exception(RcfError_Socket, "closesocket()", osError(err)));
+                Exception(
+                    _RcfError_Socket("closesocket()"),
+                    err,
+                    RcfSubsystem_Os))
+                (mFd);
         }
 
         mFd = -1;

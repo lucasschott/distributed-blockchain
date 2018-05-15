@@ -2,7 +2,7 @@
 // ip/udp.hpp
 // ~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -45,28 +45,34 @@ public:
   /// The type of a UDP endpoint.
   typedef basic_endpoint<udp> endpoint;
 
+  /// (Deprecated: use resolver::query.) The type of a resolver query.
+  typedef basic_resolver_query<udp> resolver_query;
+
+  /// (Deprecated: use resolver::iterator.) The type of a resolver iterator.
+  typedef basic_resolver_iterator<udp> resolver_iterator;
+
   /// Construct to represent the IPv4 UDP protocol.
   static udp v4()
   {
-    return udp(ASIO_OS_DEF(AF_INET));
+    return udp(PF_INET);
   }
 
   /// Construct to represent the IPv6 UDP protocol.
   static udp v6()
   {
-    return udp(ASIO_OS_DEF(AF_INET6));
+    return udp(PF_INET6);
   }
 
   /// Obtain an identifier for the type of the protocol.
   int type() const
   {
-    return ASIO_OS_DEF(SOCK_DGRAM);
+    return SOCK_DGRAM;
   }
 
   /// Obtain an identifier for the protocol.
   int protocol() const
   {
-    return ASIO_OS_DEF(IPPROTO_UDP);
+    return IPPROTO_UDP;
   }
 
   /// Obtain an identifier for the protocol family.
@@ -95,8 +101,8 @@ public:
 
 private:
   // Construct with a specific family.
-  explicit udp(int protocol_family)
-    : family_(protocol_family)
+  explicit udp(int family)
+    : family_(family)
   {
   }
 

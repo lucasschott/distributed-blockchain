@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -22,7 +22,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <cstdint>
+#include <boost/cstdint.hpp>
 
 #include <RCF/ThreadLibrary.hpp>
 #include <RCF/Tools.hpp>
@@ -109,7 +109,7 @@ namespace RCF {
             mBaseTimeMs(0)
         {}
 
-        TimerCompare(std::uint32_t baseTimeMs) : 
+        TimerCompare(boost::uint32_t baseTimeMs) : 
             mBaseTimeMs(baseTimeMs)
         {}
 
@@ -117,11 +117,11 @@ namespace RCF {
         // elements are at the top of the heap.
         template<typename T>
         bool operator()(
-            const std::pair<std::uint32_t, T> & lhs, 
-            const std::pair<std::uint32_t, T> & rhs)
+            const std::pair<boost::uint32_t, T> & lhs, 
+            const std::pair<boost::uint32_t, T> & rhs)
         {
-            std::uint32_t lhsTimeMs = lhs.first - mBaseTimeMs;
-            std::uint32_t rhsTimeMs = rhs.first - mBaseTimeMs;
+            boost::uint32_t lhsTimeMs = lhs.first - mBaseTimeMs;
+            boost::uint32_t rhsTimeMs = rhs.first - mBaseTimeMs;
 
             return 
                     std::make_pair(lhsTimeMs, lhs.second)
@@ -130,7 +130,7 @@ namespace RCF {
 
     private:
 
-        std::uint32_t mBaseTimeMs;
+        boost::uint32_t mBaseTimeMs;
     };
 
     template<typename T>
@@ -148,7 +148,7 @@ namespace RCF {
         {
             Lock lock(mTimerHeapMutex);
 
-            std::uint32_t timeNowMs = RCF::getCurrentTimeMs();
+            boost::uint32_t timeNowMs = RCF::getCurrentTimeMs();
             if (timeNowMs - mBaseTimeMs > 1000*60*60)
             {
                 mBaseTimeMs = mTimerHeap.empty() ?
@@ -160,7 +160,7 @@ namespace RCF {
         }
 
 
-        typedef std::pair<std::uint32_t, T> TimerEntry;
+        typedef std::pair<boost::uint32_t, T> TimerEntry;
 
         void add(const TimerEntry & timerEntry)
         {
@@ -232,23 +232,23 @@ namespace RCF {
             return false;
         }
 
-        std::uint32_t getNextEntryTimeoutMs()
+        boost::uint32_t getNextEntryTimeoutMs()
         {
             Lock lock(mTimerHeapMutex);
 
             return mTimerHeap.empty() ?
-                std::uint32_t(-1) :
+                boost::uint32_t(-1) :
                 getTimeoutMs(mTimerHeap.top());
         }
 
     private:
 
-        std::uint32_t getTimeoutMs(const TimerEntry & timerEntry)
+        boost::uint32_t getTimeoutMs(const TimerEntry & timerEntry)
         {
             return generateTimeoutMs(timerEntry.first);
         }
 
-        std::uint32_t                 mBaseTimeMs;
+        boost::uint32_t                 mBaseTimeMs;
 
         mutable Mutex                   mTimerHeapMutex;
         Heap<TimerEntry, TimerCompare>  mTimerHeap;

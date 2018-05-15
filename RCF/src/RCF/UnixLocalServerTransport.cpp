@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,12 +19,10 @@
 #include <RCF/UnixLocalServerTransport.hpp>
 
 #include <RCF/Asio.hpp>
-#include <RCF/Log.hpp>
-#include <RCF/TimedBsdSockets.hpp>
 #include <RCF/UnixLocalClientTransport.hpp>
 #include <RCF/UnixLocalEndpoint.hpp>
 
-#include <RCF/BsdSockets.hpp>
+#include <RCF/util/Platform/OS/BsdSockets.hpp>
 
 // std::remove
 #include <cstdio>
@@ -63,7 +61,7 @@ namespace RCF {
     };
 
     typedef stream_protocol::socket                 UnixLocalSocket;
-    typedef std::shared_ptr<UnixLocalSocket>      UnixLocalSocketPtr;
+    typedef boost::shared_ptr<UnixLocalSocket>      UnixLocalSocketPtr;
 
     // UnixLocalNetworkSession
 
@@ -127,14 +125,12 @@ namespace RCF {
         UnixLocalAcceptor & unixLocalAcceptor = 
             static_cast<UnixLocalAcceptor &>(mTransport.getAcceptor());
 
-        using std::placeholders::_1;
-
         unixLocalAcceptor.mAcceptor.async_accept(
             *mSocketPtr,
-            std::bind(
+            boost::bind(
                 &AsioNetworkSession::onAcceptCompleted,
                 sharedFromThis(),
-                _1));
+                ASIO_NS::placeholders::error));
     }
 
     bool UnixLocalNetworkSession::implOnAccept()
@@ -159,7 +155,7 @@ namespace RCF {
         const int BufferSize = 8*1024;
         char buffer[BufferSize];
         while (recv(fd, buffer, BufferSize, 0) > 0);
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
         int ret = shutdown(fd, SD_BOTH);
 #else
         int ret = shutdown(fd, SHUT_RDWR);
@@ -169,12 +165,12 @@ namespace RCF {
         postRead();
     }
 
-    ClientTransportUniquePtr UnixLocalNetworkSession::implCreateClientTransport()
+    ClientTransportAutoPtr UnixLocalNetworkSession::implCreateClientTransport()
     {
-        std::unique_ptr<UnixLocalClientTransport> unixLocalClientTransport(
+        std::auto_ptr<UnixLocalClientTransport> unixLocalClientTransport(
             new UnixLocalClientTransport(mSocketPtr, mRemoteFileName));
 
-        return ClientTransportUniquePtr(unixLocalClientTransport.release());
+        return ClientTransportAutoPtr(unixLocalClientTransport.release());
     }
 
     void UnixLocalNetworkSession::implTransferNativeFrom(ClientTransport & clientTransport)
@@ -185,7 +181,7 @@ namespace RCF {
         if (pUnixLocalClientTransport == NULL)
         {
             Exception e("incompatible client transport");
-            RCF_THROW(e);
+            RCF_THROW(e)(typeid(clientTransport));
         }
 
         UnixLocalClientTransport & unixLocalClientTransport = *pUnixLocalClientTransport;
@@ -230,16 +226,16 @@ namespace RCF {
     {
     }
 
-    ClientTransportUniquePtr UnixLocalServerTransport::implCreateClientTransport(
+    ClientTransportAutoPtr UnixLocalServerTransport::implCreateClientTransport(
         const Endpoint &endpoint)
     {
         const UnixLocalEndpoint & unixLocalEndpoint = 
             dynamic_cast<const UnixLocalEndpoint &>(endpoint);
 
-        ClientTransportUniquePtr clientTransportUniquePtr(
+        ClientTransportAutoPtr clientTransportAutoPtr(
             new UnixLocalClientTransport(unixLocalEndpoint.getPipeName()));
 
-        return clientTransportUniquePtr;
+        return clientTransportAutoPtr;
     }
 
     void UnixLocalServerTransport::onServerStart(RcfServer & server)

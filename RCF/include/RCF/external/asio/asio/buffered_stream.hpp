@@ -2,7 +2,7 @@
 // buffered_stream.hpp
 // ~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,6 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 #include <cstddef>
-#include "RCF/external/asio/asio/async_result.hpp"
 #include "RCF/external/asio/asio/buffered_read_stream.hpp"
 #include "RCF/external/asio/asio/buffered_write_stream.hpp"
 #include "RCF/external/asio/asio/buffered_stream_fwd.hpp"
@@ -47,7 +46,7 @@ class buffered_stream
 {
 public:
   /// The type of the next layer.
-  typedef typename remove_reference<Stream>::type next_layer_type;
+  typedef typename boost::remove_reference<Stream>::type next_layer_type;
 
   /// The type of the lowest layer.
   typedef typename next_layer_type::lowest_layer_type lowest_layer_type;
@@ -87,6 +86,13 @@ public:
     return stream_impl_.lowest_layer();
   }
 
+  /// (Deprecated: use get_io_service().) Get the io_service associated with
+  /// the object.
+  asio::io_service& io_service()
+  {
+    return stream_impl_.get_io_service();
+  }
+
   /// Get the io_service associated with the object.
   asio::io_service& get_io_service()
   {
@@ -123,12 +129,9 @@ public:
 
   /// Start an asynchronous flush.
   template <typename WriteHandler>
-  ASIO_INITFN_RESULT_TYPE(WriteHandler,
-      void (asio::error_code, std::size_t))
-  async_flush(ASIO_MOVE_ARG(WriteHandler) handler)
+  void async_flush(WriteHandler handler)
   {
-    return stream_impl_.next_layer().async_flush(
-        ASIO_MOVE_CAST(WriteHandler)(handler));
+    return stream_impl_.next_layer().async_flush(handler);
   }
 
   /// Write the given data to the stream. Returns the number of bytes written.
@@ -151,13 +154,10 @@ public:
   /// Start an asynchronous write. The data being written must be valid for the
   /// lifetime of the asynchronous operation.
   template <typename ConstBufferSequence, typename WriteHandler>
-  ASIO_INITFN_RESULT_TYPE(WriteHandler,
-      void (asio::error_code, std::size_t))
-  async_write_some(const ConstBufferSequence& buffers,
-      ASIO_MOVE_ARG(WriteHandler) handler)
+  void async_write_some(const ConstBufferSequence& buffers,
+      WriteHandler handler)
   {
-    return stream_impl_.async_write_some(buffers,
-        ASIO_MOVE_CAST(WriteHandler)(handler));
+    stream_impl_.async_write_some(buffers, handler);
   }
 
   /// Fill the buffer with some data. Returns the number of bytes placed in the
@@ -176,11 +176,9 @@ public:
 
   /// Start an asynchronous fill.
   template <typename ReadHandler>
-  ASIO_INITFN_RESULT_TYPE(ReadHandler,
-      void (asio::error_code, std::size_t))
-  async_fill(ASIO_MOVE_ARG(ReadHandler) handler)
+  void async_fill(ReadHandler handler)
   {
-    return stream_impl_.async_fill(ASIO_MOVE_CAST(ReadHandler)(handler));
+    stream_impl_.async_fill(handler);
   }
 
   /// Read some data from the stream. Returns the number of bytes read. Throws
@@ -203,13 +201,10 @@ public:
   /// Start an asynchronous read. The buffer into which the data will be read
   /// must be valid for the lifetime of the asynchronous operation.
   template <typename MutableBufferSequence, typename ReadHandler>
-  ASIO_INITFN_RESULT_TYPE(ReadHandler,
-      void (asio::error_code, std::size_t))
-  async_read_some(const MutableBufferSequence& buffers,
-      ASIO_MOVE_ARG(ReadHandler) handler)
+  void async_read_some(const MutableBufferSequence& buffers,
+      ReadHandler handler)
   {
-    return stream_impl_.async_read_some(buffers,
-        ASIO_MOVE_CAST(ReadHandler)(handler));
+    stream_impl_.async_read_some(buffers, handler);
   }
 
   /// Peek at the incoming data on the stream. Returns the number of bytes read.

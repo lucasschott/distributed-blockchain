@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,22 +11,19 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/TcpClientTransport.hpp>
 
-#include <chrono>
-#include <functional>
+#include <boost/bind.hpp>
 
 #include <RCF/AmiIoHandler.hpp>
 #include <RCF/AsioDeadlineTimer.hpp>
-#include <RCF/AmiThreadPool.hpp>
 #include <RCF/ClientStub.hpp>
 #include <RCF/InitDeinit.hpp>
-#include <RCF/OverlappedAmi.hpp>
 #include <RCF/TcpEndpoint.hpp>
 #include <RCF/ThreadLocalData.hpp>
 #include <RCF/TimedBsdSockets.hpp>
@@ -76,9 +73,9 @@ namespace RCF {
         return Tt_Tcp;
     }
 
-    std::unique_ptr<ClientTransport> TcpClientTransport::clone() const
+    std::auto_ptr<ClientTransport> TcpClientTransport::clone() const
     {
-        return ClientTransportUniquePtr( new TcpClientTransport(*this) );
+        return ClientTransportAutoPtr( new TcpClientTransport(*this) );
     }
 
     void TcpClientTransport::implConnect(
@@ -98,7 +95,7 @@ namespace RCF {
         {
             if (pClientStub->getHttpProxyPort() == 0)
             {
-                RCF::Exception e( RcfError_HttpProxyPort );
+                RCF::Exception e( _RcfError_HttpProxyPort() );
                 RCF_THROW(e);
             }
 
@@ -129,7 +126,7 @@ namespace RCF {
 
         PollingFunctor pollingFunctor(
             mClientProgressPtr,
-            RemoteCallPhase::Rcp_Connect,
+            ClientProgress::Connect,
             mEndTimeMs);
 
         int err = 0;
@@ -153,16 +150,16 @@ namespace RCF {
 
             if (err == 0)
             {
-                Exception e( RcfError_ClientConnectTimeout, 
+                Exception e( _RcfError_ClientConnectTimeout(
                     timeoutMs, 
-                    mConnectionAddr.string());
+                    mConnectionAddr.string()));
                 
                 RCF_THROW(e);
             }
             else
             {
-                Exception e(RcfError_ClientConnectFail, osError(err));
-                RCF_THROW(e);
+                Exception e( _RcfError_ClientConnectFail(), err, RcfSubsystem_Os);
+                RCF_THROW(e)(mConnectionAddr.string());
             }
         }
 
@@ -246,7 +243,7 @@ namespace RCF {
         else if (!mConnectionAddr.isResolved())
         {
             mpClientStub->onError(
-                Exception(RcfError_DnsLookup, mConnectionAddr.string(), ""));
+                Exception(_RcfError_DnsLookup(mConnectionAddr.string())));
 
             return;
         }
@@ -302,7 +299,7 @@ namespace RCF {
 
             mOverlappedPtr->mOpType = Connect;
 
-            RCF::ThreadPtr doConnectThread( new RCF::Thread( std::bind(
+            RCF::ThreadPtr doConnectThread( new RCF::Thread( boost::bind(
                 &doBlockingConnect,
                 static_cast<int>(mTcpSocketPtr->native()),
                 pSockAddr,
@@ -320,7 +317,7 @@ namespace RCF {
                 AmiIoHandler(mOverlappedPtr));
         }
 
-        mAsioTimerPtr->expires_from_now(std::chrono::milliseconds(timeoutMs));
+        mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
         mAsioTimerPtr->async_wait( AmiTimerHandler(mOverlappedPtr) );
     }
 
@@ -343,7 +340,7 @@ namespace RCF {
         {
             if (pClientStub->getHttpProxyPort() == 0)
             {
-                RCF::Exception e( RcfError_HttpProxyPort );
+                RCF::Exception e( _RcfError_HttpProxyPort() );
                 RCF_THROW(e);
             }
 
@@ -365,14 +362,12 @@ namespace RCF {
 
             RecursiveLock lock(mOverlappedPtr->mMutex);
 
-            Thread thread( std::bind( 
+            Thread thread( boost::bind( 
                 &TcpClientTransport::doDnsLookup, 
                 mOverlappedPtr->mIndex,
                 timeoutMs,
                 mOverlappedPtr, 
                 mConnectionAddr));
-
-            thread.detach();
         }
         else
         {
@@ -397,7 +392,7 @@ namespace RCF {
     {
         e = Exception();
 
-        RCF_ASSERT(mFd == INVALID_SOCKET);
+        RCF_ASSERT_EQ(mFd , INVALID_SOCKET);
 
         mFd = mConnectionAddr.createSocket();
         Platform::OS::BsdSockets::setblocking(mFd, false);
@@ -421,11 +416,11 @@ namespace RCF {
                 int err = Platform::OS::BsdSockets::GetLastError();
                 if (err == Platform::OS::BsdSockets::ERR_EADDRINUSE)
                 {
-                    e = Exception(RcfError_PortInUse, mLocalIp.getIp(), mLocalIp.getPort());
+                    e = Exception(_RcfError_PortInUse(mLocalIp.getIp(), mLocalIp.getPort()), err, RcfSubsystem_Os, "bind() failed");
                 }
                 else
                 {
-                    e = Exception(RcfError_SocketBind, mLocalIp.getIp(), mLocalIp.getPort(), osError(err));
+                    e = Exception(_RcfError_SocketBind(mLocalIp.getIp(), mLocalIp.getPort()), err, RcfSubsystem_Os, "bind() failed");
                 }
             }
         }
@@ -510,7 +505,11 @@ namespace RCF {
 
             RCF_VERIFY(
                 ret == 0,
-                Exception(RcfError_Socket, "closesocket()", osError(err)));
+                Exception(
+                _RcfError_Socket("closesocket()"),
+                err,
+                RcfSubsystem_Os))
+                (mFd);
         }
 
         mFd = -1;

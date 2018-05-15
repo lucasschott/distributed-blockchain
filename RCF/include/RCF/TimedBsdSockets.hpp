@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,16 +19,12 @@
 #ifndef INCLUDE_RCF_TIMEDBSDSOCKETS_HPP
 #define INCLUDE_RCF_TIMEDBSDSOCKETS_HPP
 
-#include <vector>
-
+#include <RCF/ByteBuffer.hpp>
 #include <RCF/ClientProgress.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/BsdSockets.hpp> // GetErrorString()
-#include <RCF/RcfFwd.hpp>
+#include <RCF/util/Platform/OS/BsdSockets.hpp> // GetErrorString()
 
 namespace RCF {
-
-    class ByteBuffer;
 
     class I_PollingFunctor
     {
@@ -42,14 +38,14 @@ namespace RCF {
     public:
         PollingFunctor(
             ClientProgressPtr clientProgressPtr,
-            RemoteCallPhase activity,
+            ClientProgress::Activity activity,
             unsigned int endTimeMs);
 
         int operator()(int fd, int &err, bool bRead);
 
     private:
         ClientProgressPtr mClientProgressPtr;
-        RemoteCallPhase mActivity;
+        ClientProgress::Activity mActivity;
         unsigned int mEndTimeMs;
     };
 
@@ -63,7 +59,7 @@ namespace RCF {
     // return -2 for timeout, -1 for error, 0 for ready
     RCF_EXPORT int pollSocketWithProgress(
         ClientProgressPtr ClientProgressPtr,
-        RemoteCallPhase activity,
+        ClientProgress::Activity activity,
         unsigned int endTimeMs,
         int fd,
         int &err,
@@ -103,7 +99,7 @@ namespace RCF {
 
     RCF_EXPORT bool isFdConnected(int fd);
 
-    RCF_EXPORT std::pair<std::string, std::vector<std::string> > getLocalIps();
+    std::pair<std::string, std::vector<std::string> > getLocalIps();
 
 } // namespace RCF
 

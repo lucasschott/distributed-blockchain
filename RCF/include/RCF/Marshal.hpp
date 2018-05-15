@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -32,6 +32,16 @@
 #include <RCF/TypeTraits.hpp>
 #include <RCF/Version.hpp>
 
+#include <boost/mpl/and.hpp>
+#include <boost/mpl/assert.hpp>
+#include <boost/mpl/and.hpp>
+#include <boost/mpl/if.hpp>
+#include <boost/mpl/not.hpp>
+#include <boost/mpl/or.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/static_assert.hpp>
+#include <boost/type_traits.hpp>
+
 #if RCF_FEATURE_SF==1
 #include <SF/memory.hpp>
 #endif
@@ -40,6 +50,8 @@
 #include <RCF/BsAutoPtr.hpp>
 #include <boost/serialization/binary_object.hpp>
 #endif
+
+#include <SF/Tools.hpp>
 
 namespace RCF {
 
@@ -119,10 +131,12 @@ namespace RCF {
 
     // Boost.Serialization handles smart pointers very clumsily, so we do those ourselves
 
+#define RefCountSmartPtr boost::shared_ptr
+
     template<typename T>
     inline void serializeImpl(
         SerializationProtocolOut &out,
-        const std::shared_ptr<T> *spt,
+        const RefCountSmartPtr<T> *spt,
         int)
     {
         serialize(out, *spt);
@@ -131,7 +145,7 @@ namespace RCF {
     template<typename T>
     inline void serializeImpl(
         SerializationProtocolOut &out,
-        std::shared_ptr<T> *const spt,
+        RefCountSmartPtr<T> *const spt,
         int)
     {
         serialize(out, *spt);
@@ -140,17 +154,17 @@ namespace RCF {
     template<typename T>
     inline void deserializeImpl(
         SerializationProtocolIn &in,
-        std::shared_ptr<T> *&spt,
+        RefCountSmartPtr<T> *&spt,
         int)
     {
-        spt = new std::shared_ptr<T>();
+        spt = new RefCountSmartPtr<T>();
         deserialize(in, *spt);
     }
 
     template<typename T>
     inline void serializeImpl(
         SerializationProtocolOut &out,
-        const std::shared_ptr<T> &spt,
+        const RefCountSmartPtr<T> &spt,
         int)
     {
         serialize(out, spt.get());
@@ -159,13 +173,15 @@ namespace RCF {
     template<typename T>
     inline void deserializeImpl(
         SerializationProtocolIn &in,
-        std::shared_ptr<T> &spt,
+        RefCountSmartPtr<T> &spt,
         int)
     {
         T *pt = NULL;
         deserialize(in, pt);
-        spt = std::shared_ptr<T>(pt);
+        spt = RefCountSmartPtr<T>(pt);
     }
+
+#undef RefCountSmartPtr
 
 #if RCF_FEATURE_BOOST_SERIALIZATION==1
 } // namespace RCF
@@ -178,7 +194,7 @@ namespace boost { namespace serialization {
         // We have to copy the buffer - can't do efficient zero-copy transmission 
         // of ByteBuffer, with B.Ser.
 
-        std::uint32_t len = byteBuffer.getLength();
+        boost::uint32_t len = byteBuffer.getLength();
         ar & len;
         ar & make_binary_object(byteBuffer.getPtr(), len);
         
@@ -190,7 +206,7 @@ namespace boost { namespace serialization {
         // We have to copy the buffer - can't do efficient zero-copy transmission 
         // of ByteBuffer, with B.Ser.
 
-        std::uint32_t len = 0;
+        boost::uint32_t len = 0;
         ar & len;
 
         RCF::ReallocBufferPtr bufferPtr = RCF::getObjectPool().getReallocBufferPtr();
@@ -235,6 +251,10 @@ namespace RCF {
 
     RCF_EXPORT bool deserializeOverride(SerializationProtocolIn &in, ByteBuffer & u);
 
+    // For vc6, manual zero-initialization of integral types.
+
+    template<typename T> void vc6DefaultInit(T *) {}
+
     // -------------------------------------------------------------------------
     // Parameter store.
 
@@ -276,6 +296,8 @@ namespace RCF {
 
                 new (mpT) T();
 
+                vc6DefaultInit(mpT);
+
 #ifdef _MSC_VER
 #pragma warning( pop )
 #endif
@@ -312,7 +334,7 @@ namespace RCF {
             return mpT;
         }
 
-        std::shared_ptr<T> mptPtr;
+        boost::shared_ptr<T> mptPtr;
         T * mpT;
     };
 
@@ -350,8 +372,8 @@ namespace RCF {
     {
     public:
 
-        static_assert( !IsPointer<T>::value, "Incorrect marshaling code." );
-        static_assert( !IsReference<T>::value, "Incorrect marshaling code." );
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsReference<T> > ));
 
         Sm_Value(std::vector<char> & vec) : mPs(vec)
         { 
@@ -441,8 +463,8 @@ namespace RCF {
     {
     public:
 
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
-        static_assert(!IsReference<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsReference<T> > ));
 
         Sm_Ret(std::vector<char> & vec) : mPs(vec)
         { 
@@ -490,9 +512,11 @@ namespace RCF {
 
         typedef typename RemoveReference<CRefT>::type CT;
         typedef typename RemoveCv<CT>::type T;
-        static_assert(IsReference<CRefT>::value, "Incorrect marshaling code.");
-        static_assert(IsConst<CT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<CRefT> ));
+
+        BOOST_MPL_ASSERT(( IsConst<CT> ));
+
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Sm_CRef(std::vector<char> & vec) : mPs(), mVec(vec) 
         {}
@@ -557,7 +581,7 @@ namespace RCF {
                         deserialize(in, pt);
                         if (!pt)
                         {
-                            RCF::Exception e(RCF::RcfError_DeserializationNullPointer);
+                            RCF::Exception e(RCF::_RcfError_DeserializationNullPointer());
                             RCF_THROW(e);
                         }
                         deleter.dismiss();
@@ -588,8 +612,8 @@ namespace RCF {
 
         typedef typename RemoveReference<RefT>::type T;
         typedef typename RemoveCv<T>::type U;
-        static_assert(IsReference<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<RefT> ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Sm_Ref(std::vector<char> & vec) : mVec(vec)
         {}
@@ -655,7 +679,7 @@ namespace RCF {
                         deserialize(in, pt);
                         if (!pt)
                         {
-                            RCF::Exception e(RCF::RcfError_DeserializationNullPointer);
+                            RCF::Exception e(RCF::_RcfError_DeserializationNullPointer());
                             RCF_THROW(e);
                         }
                         deleter.dismiss();
@@ -696,8 +720,8 @@ namespace RCF {
         typedef typename RemoveOut<OutRefT>::type RefT;
         typedef typename RemoveReference<RefT>::type T;
         typedef typename RemoveCv<T>::type U;
-        static_assert(IsReference<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<RefT> ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Sm_OutRef(std::vector<char> & vec) : mPs(vec)
         {
@@ -749,8 +773,8 @@ namespace RCF {
 
         typedef typename RemovePointer<PtrT>::type T;
         typedef typename RemoveCv<T>::type U;
-        static_assert(IsPointer<PtrT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsPointer<PtrT> ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Sm_Ptr(std::vector<char> &)
         {}
@@ -802,8 +826,8 @@ namespace RCF {
     {
     public:
 
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
-        static_assert(!IsReference<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsReference<T> > ));
 
         Cm_Ret()
         { 
@@ -855,11 +879,11 @@ namespace RCF {
     {
     public:
 
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
-        static_assert(!IsReference<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsReference<T> > ));
 
         // We use const_cast here, in case T's copy constructor is non-const.
-        // E.g. if T is a std::unique_ptr.
+        // E.g. if T is a std::auto_ptr.
         Cm_Value(const T &t) : mT( const_cast<T &>(t) ) 
         {
         }
@@ -893,11 +917,12 @@ namespace RCF {
 
         typedef typename RemovePointer<PtrT>::type T;
 
-        static_assert(IsPointer<PtrT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsPointer<PtrT> ));
+
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         // We use const_cast here, in case T's copy constructor is non-const.
-        // E.g. if T is a std::unique_ptr.
+        // E.g. if T is a std::auto_ptr.
         //Proxy_Ptr(const T &t) : mT( const_cast<T &>(t) ) 
         Cm_Ptr(T * pt) : mpT(pt) 
         {
@@ -929,9 +954,11 @@ namespace RCF {
 
         typedef typename RemoveReference<CRefT>::type CT;
         typedef typename RemoveCv<CT>::type T;
-        static_assert(IsReference<CRefT>::value, "Incorrect marshaling code.");
-        static_assert(IsConst<CT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<CRefT> ));
+
+        BOOST_MPL_ASSERT(( IsConst<CT> ));
+
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Cm_CRef(const T &t) : mT(t) 
         {}
@@ -973,9 +1000,9 @@ namespace RCF {
     public:
 
         typedef typename RemoveReference<RefT>::type T;
-        static_assert(IsReference<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsConst<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<RefT> ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsConst<RefT> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Cm_Ref(T &t) : mT(t) 
         {}
@@ -1024,9 +1051,9 @@ namespace RCF {
 
         typedef typename RemoveOut<OutRefT>::type RefT;
         typedef typename RemoveReference<RefT>::type T;
-        static_assert(IsReference<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsConst<RefT>::value, "Incorrect marshaling code.");
-        static_assert(!IsPointer<T>::value, "Incorrect marshaling code.");
+        BOOST_MPL_ASSERT(( IsReference<RefT> ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsConst<RefT> > ));
+        BOOST_MPL_ASSERT(( boost::mpl::not_< IsPointer<T> > ));
 
         Cm_OutRef(T &t) : mT(t) 
         {}
@@ -1060,7 +1087,7 @@ namespace RCF {
     struct IsConstReference
     {
         typedef typename
-            And<
+            boost::mpl::and_<
                 IsReference<T>,
                 IsConst< typename RemoveReference<T>::type >
             >::type type;
@@ -1072,8 +1099,8 @@ namespace RCF {
     struct ServerMarshalRet
     {
         typedef typename
-        If<
-            std::is_same<void, T>,
+        boost::mpl::if_<
+            boost::is_same<void, T>,
             Sm_Ret<Void>,
             Sm_Ret<T> >::type type;
     };
@@ -1082,16 +1109,16 @@ namespace RCF {
     struct ServerMarshal
     {
         typedef typename
-        RCF::If<
+        boost::mpl::if_<
             IsPointer<T>,
             Sm_Ptr<T>,
-            typename RCF::If<
+            typename boost::mpl::if_<
                 IsConstReference<T>,
                 Sm_CRef<T>,
-                typename RCF::If<
+                typename boost::mpl::if_<
                     IsReference<T>,
                     Sm_Ref<T>,
-                    typename RCF::If<
+                    typename boost::mpl::if_<
                         IsOut<T>,
                         Sm_OutRef<T>,
                         Sm_Value<T>
@@ -1108,16 +1135,16 @@ namespace RCF {
     struct ClientMarshal
     {
         typedef typename
-        RCF::If<
+        boost::mpl::if_<
             IsPointer<T>,
             Cm_Ptr<T>,
-            typename RCF::If<
+            typename boost::mpl::if_<
                 IsConstReference<T>,
                 Cm_CRef<T>,
-                typename RCF::If<
+                typename boost::mpl::if_<
                     IsReference<T>,
                     Cm_Ref<T>,
-                    typename RCF::If<
+                    typename boost::mpl::if_<
                         IsOut<T>,
                         Cm_OutRef<T>,
                         Cm_Value<T>
@@ -1137,14 +1164,14 @@ namespace RCF {
     struct ReferenceTo
     {
         typedef typename
-        RCF::If<
+        boost::mpl::if_<
             IsReference<T>,
             T,
-            typename RCF::If<
+            typename boost::mpl::if_<
                 RCF::IsConst<T>,
-                typename std::add_lvalue_reference<T>::type,
-                typename std::add_lvalue_reference<
-                    typename std::add_const<T>::type
+                typename boost::add_reference<T>::type,
+                typename boost::add_reference<
+                    typename boost::add_const<T>::type
                 >::type
             >::type
         >::type type;
@@ -1162,10 +1189,10 @@ namespace RCF {
     template<typename T>
     struct IsInParameter
     {
-        typedef typename Not< std::is_same<T,Void> >::type   NotVoid;
-        typedef typename Not< IsOut<T> >::type                 NotExplicitOutParameter;
+        typedef typename boost::mpl::not_< boost::is_same<T,Void> >::type   NotVoid;
+        typedef typename boost::mpl::not_< IsOut<T> >::type                 NotExplicitOutParameter;
 
-        typedef typename And<
+        typedef typename boost::mpl::and_<
             NotVoid,
             NotExplicitOutParameter
         >::type type;
@@ -1177,10 +1204,10 @@ namespace RCF {
     struct IsOutParameter
     {
         typedef typename
-        And<
+        boost::mpl::and_<
             IsReference<T>,
-            Not< 
-                std::is_const< 
+            boost::mpl::not_< 
+                boost::is_const< 
                     typename RemoveReference<T>::type
                 > 
             > 
@@ -1188,13 +1215,20 @@ namespace RCF {
 
         typedef typename IsOut<T>::type ExplicitOutParameter;
 
+        // Following construction doesn't compile with VC6 for some reason.
+
+        //typedef typename boost::mpl::or_<
+        //  NonConstRef,
+        //  ExplicitOutParameter
+        //>::type type;
+
         enum { value = NonConstRef_::value || ExplicitOutParameter::value };
     };
 
     template<typename T>
     struct IsReturnValue
     {
-        typedef typename Not< std::is_same<T, Void> >::type type;
+        typedef typename boost::mpl::not_< boost::is_same<T, Void> >::type type;
         enum { value = type::value };
     };
 
@@ -1246,6 +1280,8 @@ namespace RCF {
         typedef std::vector< std::pair<const void *, I_Future *> > CandidateList;
         CandidateList mCandidateList;
     };
+
+    //typedef std::vector< std::pair<const void *, I_Future *> > Candidates;
 
     RCF_EXPORT Mutex & gCandidatesMutex();
     RCF_EXPORT Candidates & gCandidates();
@@ -1505,7 +1541,7 @@ namespace RCF {
 
             if (!clientStub.mpParameters)
             {
-                Exception e(RcfError_ClientStubParms);
+                Exception e(_RcfError_ClientStubParms());
                 RCF_THROW(e);
             }
 
@@ -1619,7 +1655,7 @@ namespace RCF {
         typename ServerMarshal<A15>::type       a15;
     };
 
-    typedef std::shared_ptr<I_Parameters> ParametersPtr;
+    typedef boost::shared_ptr<I_Parameters> ParametersPtr;
 
     template<
         typename R, 
@@ -1658,7 +1694,7 @@ namespace RCF {
 
             if (!session.mpParameters)
             {
-                Exception e(RcfError_ServerStubParms);
+                Exception e(_RcfError_ServerStubParms());
                 RCF_THROW(e);
             }
 
@@ -1670,7 +1706,7 @@ namespace RCF {
 
     RCF_EXPORT void convertRcfSessionToRcfClient(
         OnCallbackConnectionCreated func,
-        RemoteCallMode rcs = RCF::Twoway);
+        RemoteCallSemantics rcs = RCF::Twoway);
 
 
     RCF_EXPORT RcfSessionPtr convertRcfClientToRcfSession(
@@ -1711,6 +1747,10 @@ namespace RCF {
 
 
     RCF_EXPORT void createCallbackConnectionImpl(
+        ClientStub & client, 
+        ServerTransport & callbackServer);
+
+    RCF_EXPORT void createCallbackConnectionImpl_Legacy(
         ClientStub & client, 
         ServerTransport & callbackServer);
 

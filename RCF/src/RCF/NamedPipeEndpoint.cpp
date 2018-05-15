@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,8 +19,7 @@
 #include <RCF/NamedPipeEndpoint.hpp>
 
 #include <RCF/InitDeinit.hpp>
-#include <RCF/MemStream.hpp>
-#include <RCF/Tchar.hpp>
+#include <RCF/util/Tchar.hpp>
 
 #if RCF_FEATURE_NAMEDPIPE==1
 #include <RCF/Win32NamedPipeClientTransport.hpp>
@@ -41,28 +40,28 @@ namespace RCF {
 
 #if RCF_FEATURE_NAMEDPIPE==1
 
-    ServerTransportUniquePtr NamedPipeEndpoint::createServerTransport() const
+    ServerTransportAutoPtr NamedPipeEndpoint::createServerTransport() const
     {
-        return ServerTransportUniquePtr(
+        return ServerTransportAutoPtr(
             new Win32NamedPipeServerTransport(mPipeName));
     }
 
-    ClientTransportUniquePtr NamedPipeEndpoint::createClientTransport() const
+    ClientTransportAutoPtr NamedPipeEndpoint::createClientTransport() const
     {            
-        return ClientTransportUniquePtr(
+        return ClientTransportAutoPtr(
             new Win32NamedPipeClientTransport(mPipeName));
     }
 
 #else
         
-    ServerTransportUniquePtr NamedPipeEndpoint::createServerTransport() const
+    ServerTransportAutoPtr NamedPipeEndpoint::createServerTransport() const
     {
-        return ServerTransportUniquePtr(new UnixLocalServerTransport(toAstring(mPipeName)));
+        return ServerTransportAutoPtr(new UnixLocalServerTransport(toAstring(mPipeName)));
     }
 
-    ClientTransportUniquePtr NamedPipeEndpoint::createClientTransport() const
+    ClientTransportAutoPtr NamedPipeEndpoint::createClientTransport() const
     {
-        return ClientTransportUniquePtr(new UnixLocalClientTransport(toAstring(mPipeName)));
+        return ClientTransportAutoPtr(new UnixLocalClientTransport(toAstring(mPipeName)));
     }
 
 #endif

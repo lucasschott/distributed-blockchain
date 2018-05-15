@@ -11,15 +11,10 @@
 
 int main()
 {
-    RCF::RcfInit rcfInit;
+    RCF::RcfInitDeinit rcfInit;
 
     try
     {
-
-		std::string networkInterface = "127.0.0.1";
-		int port = 50001;
-		std::cout << "Connecting to server on " << networkInterface << ":" << port << "." << std::endl;
-
         // Setup a vector of strings.
         std::vector<std::string> v;
         v.push_back("one");
@@ -34,7 +29,7 @@ int main()
             std::ostream_iterator<std::string>(std::cout, "\n"));
 
         // Make the call.
-        RcfClient<MyService>( RCF::TcpEndpoint(networkInterface, port) ).reverse(v);
+        RcfClient<MyService>( RCF::TcpEndpoint("127.0.0.1", 50001) ).reverse(v);
 
         // Print them out again. This time they are in reverse order.
         std::cout << "\nAfter:\n";
@@ -46,7 +41,7 @@ int main()
     catch(const RCF::Exception & e)
     {
         std::cout << "Caught exception:\n";
-        std::cout << e.getErrorMessage() << std::endl;
+        std::cout << e.getError().getErrorString() << std::endl;
         return 1;
     }
 

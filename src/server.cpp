@@ -732,7 +732,7 @@ int main(int argc, char ** argv)
     try
     {
         // Initialize RCF.
-        RCF::RcfInit rcfInit;
+        RCF::RcfInitDeinit rcfInit;
         // Instantiate a RCF server.
         RCF::RcfServer server(RCF::TcpEndpoint(char_addr, my_port+1));
         // Bind the I_PrintService interface.
@@ -744,7 +744,7 @@ int main(int argc, char ** argv)
     }
     catch ( const RCF::Exception & e )
     {
-        std::cout << "Error: " << e.getErrorMessage() << std::endl;
+        std::cout << "Error: " << e.getErrorString() << std::endl;
     }
 
 
@@ -907,13 +907,13 @@ int main(int argc, char ** argv)
                     char * addr_c = in6_addr_to_char_addr(server_c->addr);
                     try
                     {
-                        RCF::RcfInit rcfInit;
+                        RCF::RcfInitDeinit rcfInit;
                         RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(addr_c,((int)server_c->port)+1));
                         client.sendBlockchain(RCF::Oneway,*blockchain);
                     }
                     catch ( const RCF::Exception & e )
                     {
-                        std::cout << "Error: " << e.getErrorMessage() << std::endl;
+                        std::cout << "Error: " << e.getErrorString() << std::endl;
                         cout << addr_c << " " << server_c->port+1 <<endl;
                     }
 

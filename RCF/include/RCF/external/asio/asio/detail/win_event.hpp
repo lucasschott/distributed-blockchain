@@ -2,7 +2,7 @@
 // detail/win_event.hpp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,9 +17,9 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 
-#if defined(ASIO_WINDOWS)
+#if defined(BOOST_WINDOWS)
 
-#include "RCF/external/asio/asio/detail/assert.hpp"
+#include <boost/assert.hpp>
 #include "RCF/external/asio/asio/detail/noncopyable.hpp"
 #include "RCF/external/asio/asio/detail/socket_types.hpp"
 
@@ -36,80 +36,50 @@ public:
   ASIO_DECL win_event();
 
   // Destructor.
-  ASIO_DECL ~win_event();
+  ~win_event()
+  {
+    ::CloseHandle(event_);
+  }
 
-  // Signal the event. (Retained for backward compatibility.)
+  // Signal the event.
   template <typename Lock>
   void signal(Lock& lock)
   {
-    this->signal_all(lock);
-  }
-
-  // Signal all waiters.
-  template <typename Lock>
-  void signal_all(Lock& lock)
-  {
-    ASIO_ASSERT(lock.locked());
+    BOOST_ASSERT(lock.locked());
     (void)lock;
-    state_ |= 1;
-    ::SetEvent(events_[0]);
+    ::SetEvent(event_);
   }
 
-  // Unlock the mutex and signal one waiter.
+  // Signal the event and unlock the mutex.
   template <typename Lock>
-  void unlock_and_signal_one(Lock& lock)
+  void signal_and_unlock(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
-    state_ |= 1;
-    bool have_waiters = (state_ > 1);
+    BOOST_ASSERT(lock.locked());
     lock.unlock();
-    if (have_waiters)
-      ::SetEvent(events_[1]);
-  }
-
-  // If there's a waiter, unlock the mutex and signal it.
-  template <typename Lock>
-  bool maybe_unlock_and_signal_one(Lock& lock)
-  {
-    ASIO_ASSERT(lock.locked());
-    state_ |= 1;
-    if (state_ > 1)
-    {
-      lock.unlock();
-      ::SetEvent(events_[1]);
-      return true;
-    }
-    return false;
+    ::SetEvent(event_);
   }
 
   // Reset the event.
   template <typename Lock>
   void clear(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
+    BOOST_ASSERT(lock.locked());
     (void)lock;
-    ::ResetEvent(events_[0]);
-    state_ &= ~std::size_t(1);
+    ::ResetEvent(event_);
   }
 
   // Wait for the event to become signalled.
   template <typename Lock>
   void wait(Lock& lock)
   {
-    ASIO_ASSERT(lock.locked());
-    while ((state_ & 1) == 0)
-    {
-      state_ += 2;
-      lock.unlock();
-      ::WaitForMultipleObjects(2, events_, false, INFINITE);
-      lock.lock();
-      state_ -= 2;
-    }
+    BOOST_ASSERT(lock.locked());
+    lock.unlock();
+    ::WaitForSingleObject(event_, INFINITE);
+    lock.lock();
   }
 
 private:
-  HANDLE events_[2];
-  std::size_t state_;
+  HANDLE event_;
 };
 
 } // namespace detail
@@ -121,6 +91,6 @@ private:
 # include "RCF/external/asio/asio/detail/impl/win_event.ipp"
 #endif // defined(ASIO_HEADER_ONLY)
 
-#endif // defined(ASIO_WINDOWS)
+#endif // defined(BOOST_WINDOWS)
 
 #endif // ASIO_DETAIL_WIN_EVENT_HPP

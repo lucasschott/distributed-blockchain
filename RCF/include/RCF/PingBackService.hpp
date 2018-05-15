@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,25 +19,27 @@
 #ifndef INCLUDE_RCF_PINGBACKSERVICE_HPP
 #define INCLUDE_RCF_PINGBACKSERVICE_HPP
 
-#include <memory>
+#include <functional>
+#include <set>
 
 #include <RCF/Export.hpp>
 #include <RCF/Heap.hpp>
 #include <RCF/Service.hpp>
+#include <RCF/Tools.hpp>
 
 namespace RCF {
 
     class RcfSession;
-    typedef std::shared_ptr<RcfSession> RcfSessionPtr;
-    typedef std::weak_ptr<RcfSession> RcfSessionWeakPtr;
+    typedef boost::shared_ptr<RcfSession> RcfSessionPtr;
+    typedef boost::weak_ptr<RcfSession> RcfSessionWeakPtr;
     
-    typedef std::pair<std::uint32_t, RcfSessionWeakPtr>   PingBackTimerEntry;
+    typedef std::pair<boost::uint32_t, RcfSessionWeakPtr>   PingBackTimerEntry;
 
     class RCF_EXPORT PingBackService : public I_Service
     {
     public:
 
-        typedef std::weak_ptr<RcfSession> RcfSessionWeakPtr;
+        typedef boost::weak_ptr<RcfSession> RcfSessionWeakPtr;
 
         PingBackService();
 
@@ -63,7 +65,7 @@ namespace RCF {
         Condition                       mCondition;
     };
 
-    typedef std::shared_ptr<PingBackService> PingBackServicePtr;    
+    typedef boost::shared_ptr<PingBackService> PingBackServicePtr;    
 
 } // namespace RCF
 

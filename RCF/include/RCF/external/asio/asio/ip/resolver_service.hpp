@@ -2,7 +2,7 @@
 // ip/resolver_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,17 +16,11 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "RCF/external/asio/asio/detail/config.hpp"
-#include "RCF/external/asio/asio/async_result.hpp"
 #include "RCF/external/asio/asio/error_code.hpp"
+#include "RCF/external/asio/asio/detail/resolver_service.hpp"
 #include "RCF/external/asio/asio/io_service.hpp"
 #include "RCF/external/asio/asio/ip/basic_resolver_iterator.hpp"
 #include "RCF/external/asio/asio/ip/basic_resolver_query.hpp"
-
-#if defined(ASIO_WINDOWS_RUNTIME)
-# include "RCF/external/asio/asio/detail/winrt_resolver_service.hpp"
-#else
-# include "RCF/external/asio/asio/detail/resolver_service.hpp"
-#endif
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -63,13 +57,8 @@ public:
 
 private:
   // The type of the platform-specific implementation.
-#if defined(ASIO_WINDOWS_RUNTIME)
-  typedef asio::detail::winrt_resolver_service<InternetProtocol>
-    service_impl_type;
-#else
   typedef asio::detail::resolver_service<InternetProtocol>
     service_impl_type;
-#endif
 
 public:
   /// The type of a resolver implementation.
@@ -85,6 +74,12 @@ public:
         resolver_service<InternetProtocol> >(io_service),
       service_impl_(io_service)
   {
+  }
+
+  /// Destroy all user-defined handler objects owned by the service.
+  void shutdown_service()
+  {
+    service_impl_.shutdown_service();
   }
 
   /// Construct a new resolver implementation.
@@ -113,19 +108,11 @@ public:
   }
 
   /// Asynchronously resolve a query to a list of entries.
-  template <typename ResolveHandler>
-  ASIO_INITFN_RESULT_TYPE(ResolveHandler,
-      void (asio::error_code, iterator_type))
-  async_resolve(implementation_type& impl, const query_type& query,
-      ASIO_MOVE_ARG(ResolveHandler) handler)
+  template <typename Handler>
+  void async_resolve(implementation_type& impl, const query_type& query,
+      Handler handler)
   {
-    asio::detail::async_result_init<
-      ResolveHandler, void (asio::error_code, iterator_type)> init(
-        ASIO_MOVE_CAST(ResolveHandler)(handler));
-
-    service_impl_.async_resolve(impl, query, init.handler);
-
-    return init.result.get();
+    service_impl_.async_resolve(impl, query, handler);
   }
 
   /// Resolve an endpoint to a list of entries.
@@ -137,33 +124,13 @@ public:
 
   /// Asynchronously resolve an endpoint to a list of entries.
   template <typename ResolveHandler>
-  ASIO_INITFN_RESULT_TYPE(ResolveHandler,
-      void (asio::error_code, iterator_type))
-  async_resolve(implementation_type& impl, const endpoint_type& endpoint,
-      ASIO_MOVE_ARG(ResolveHandler) handler)
+  void async_resolve(implementation_type& impl, const endpoint_type& endpoint,
+      ResolveHandler handler)
   {
-    asio::detail::async_result_init<
-      ResolveHandler, void (asio::error_code, iterator_type)> init(
-        ASIO_MOVE_CAST(ResolveHandler)(handler));
-
-    service_impl_.async_resolve(impl, endpoint, init.handler);
-
-    return init.result.get();
+    return service_impl_.async_resolve(impl, endpoint, handler);
   }
 
 private:
-  // Destroy all user-defined handler objects owned by the service.
-  void shutdown_service()
-  {
-    service_impl_.shutdown_service();
-  }
-
-  // Perform any fork-related housekeeping.
-  void fork_service(asio::io_service::fork_event event)
-  {
-    service_impl_.fork_service(event);
-  }
-
   // The platform-specific implementation.
   service_impl_type service_impl_;
 };

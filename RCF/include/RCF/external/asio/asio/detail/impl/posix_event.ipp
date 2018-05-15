@@ -2,7 +2,7 @@
 // detail/impl/posix_event.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,11 +17,10 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 
-#if defined(ASIO_HAS_PTHREADS)
+#if defined(BOOST_HAS_PTHREADS) && !defined(ASIO_DISABLE_THREADS)
 
 #include "RCF/external/asio/asio/detail/posix_event.hpp"
 #include "RCF/external/asio/asio/detail/throw_error.hpp"
-#include "RCF/external/asio/asio/error.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
@@ -29,7 +28,7 @@ namespace asio {
 namespace detail {
 
 posix_event::posix_event()
-  : state_(0)
+  : signalled_(false)
 {
   int error = ::pthread_cond_init(&cond_, 0);
   asio::error_code ec(error,
@@ -42,6 +41,6 @@ posix_event::posix_event()
 
 #include "RCF/external/asio/asio/detail/pop_options.hpp"
 
-#endif // defined(ASIO_HAS_PTHREADS)
+#endif // defined(BOOST_HAS_PTHREADS) && !defined(ASIO_DISABLE_THREADS)
 
 #endif // ASIO_DETAIL_IMPL_POSIX_EVENT_IPP

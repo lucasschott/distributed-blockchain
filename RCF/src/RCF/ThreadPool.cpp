@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -25,14 +25,10 @@
 #include <RCF/Asio.hpp>
 #include <RCF/AsioHandlerCache.hpp>
 #include <RCF/AsioServerTransport.hpp>
-#include <RCF/Tools.hpp>
-#include <RCF/Log.hpp>
-
-#include <chrono>
 
 // Setting thread names for debuggers etc.
 
-#if defined(RCF_WINDOWS)
+#if defined(BOOST_WINDOWS) && !defined(__MINGW32__)
 
 // Windows
 namespace RCF {
@@ -143,8 +139,8 @@ namespace RCF {
 namespace RCF {
 
     class AsioMuxer;
-    typedef std::shared_ptr<AsioMuxer> AsioMuxerPtr;
-    typedef std::weak_ptr<AsioMuxer> AsioMuxerWeakPtr;
+    typedef boost::shared_ptr<AsioMuxer> AsioMuxerPtr;
+    typedef boost::weak_ptr<AsioMuxer> AsioMuxerWeakPtr;
 
     class TpTimeoutHandler
     {
@@ -166,7 +162,7 @@ namespace RCF {
     void * asio_handler_allocate(std::size_t size, TpDummyHandler * pHandler);
     void asio_handler_deallocate(void * pointer, std::size_t size, TpDummyHandler * pHandler);
 
-    class AsioMuxer : public std::enable_shared_from_this<AsioMuxer>
+    class AsioMuxer : public boost::enable_shared_from_this<AsioMuxer>
     {
     public:
         AsioMuxer() : 
@@ -187,7 +183,7 @@ namespace RCF {
         void startTimer()
         {
             mCycleTimer.mImpl.expires_from_now(
-                std::chrono::milliseconds(10 * 1000));
+                boost::posix_time::milliseconds(10*1000));
 
             AsioMuxerWeakPtr thisWeakPtr = shared_from_this();
             mCycleTimer.mImpl.async_wait( TpTimeoutHandler(thisWeakPtr) );
@@ -195,7 +191,7 @@ namespace RCF {
 
         void cycle(int timeoutMs)
         {
-            RCF_ASSERT(timeoutMs >= -1);
+            RCF_ASSERT_GTEQ(timeoutMs , -1);
             RCF_UNUSED_VARIABLE(timeoutMs);
 
             mIoService.run_one();
@@ -228,7 +224,7 @@ namespace RCF {
                 }
 
                 thisPtr->mCycleTimer.mImpl.expires_from_now(
-                    std::chrono::milliseconds(10 * 1000));
+                    boost::posix_time::milliseconds(10*1000));
 
                 thisPtr->mCycleTimer.mImpl.async_wait(TpTimeoutHandler(thisWeakPtr) );
             }
@@ -425,12 +421,12 @@ namespace RCF {
         return mThreadMaxCount;
     }
 
-    void ThreadPool::setThreadIdleTimeoutMs(std::uint32_t threadIdleTimeoutMs)
+    void ThreadPool::setThreadIdleTimeoutMs(boost::uint32_t threadIdleTimeoutMs)
     {
         mThreadIdleTimeoutMs = threadIdleTimeoutMs;
     }
 
-    std::uint32_t ThreadPool::getThreadIdleTimeoutMs() const
+    boost::uint32_t ThreadPool::getThreadIdleTimeoutMs() const
     {
         return mThreadIdleTimeoutMs;
     }
@@ -459,7 +455,7 @@ namespace RCF {
 
         for (std::size_t i=0; i<howManyThreads; ++i)
         {
-            RCF_ASSERT(mThreads.size() <= mThreadMaxCount);
+            RCF_ASSERT_LTEQ(mThreads.size() , mThreadMaxCount);
 
             if (mThreads.size() == mThreadMaxCount)
             {
@@ -475,7 +471,7 @@ namespace RCF {
                 ThreadInfoPtr threadInfoPtr( new ThreadInfo(*this));
 
                 ThreadPtr threadPtr( new Thread(
-                    std::bind(
+                    boost::bind(
                         &ThreadPool::repeatTask,
                         this,
                         threadInfoPtr,
@@ -501,7 +497,7 @@ namespace RCF {
             {
                 Lock lock(mThreadsMutex);
                 ++mBusyCount;
-                RCF_ASSERT(mBusyCount <= mThreads.size());
+                RCF_ASSERT_LTEQ(mBusyCount , mThreads.size());
                 if (mBusyCount == mThreads.size())
                 {
                     launchAnotherThread = true;
@@ -513,7 +509,7 @@ namespace RCF {
                 bool launchedOk = launchThread();                    
                 if (!launchedOk && mReserveLastThread && !mStopFlag)
                 {
-                    Exception e(RcfError_AllThreadsBusy);
+                    Exception e(_RcfError_AllThreadsBusy());
                     RCF_THROW(e);
                 }
             }
@@ -532,7 +528,7 @@ namespace RCF {
             
             --mBusyCount;            
             
-            RCF_ASSERT(mBusyCount <= mThreads.size());
+            RCF_ASSERT_LTEQ(mBusyCount , mThreads.size());
         }
 
         // Has this thread been idle? The touch timer is reset when the thread
@@ -545,25 +541,13 @@ namespace RCF {
 
             Lock lock(mThreadsMutex);
 
-            if (    !mStopFlag
-                &&  mThreads.size() > mThreadMinCount 
+            if (    mThreads.size() > mThreadMinCount 
                 &&  mBusyCount < mThreads.size() - 1)
             {                
                 threadInfoPtr->mStopFlag = true; 
 
-                // Remove ourselves from the thread list. If we don't do this here, another thread
-                // may come along immediately after and conclude that it too should stop itself.
-                auto iter = mThreads.find(threadInfoPtr);
-                RCF_ASSERT(iter != mThreads.end());
-                if ( iter != mThreads.end() )
-                {
-                    ThreadPtr thisThreadPtr = iter->second;
-                    thisThreadPtr->detach();
-                    mThreads.erase(iter);
-                }
-
-                // Setting this, so that the thread can exit without accessing the ThreadPool object.
-                threadInfoPtr->mAlreadyRemovedFromThreadPool = true;
+                RCF_ASSERT( mThreads.find(threadInfoPtr) != mThreads.end() );
+                mThreads.erase( mThreads.find(threadInfoPtr) );
             }
         }
     }
@@ -622,7 +606,7 @@ namespace RCF {
             }
             catch(const std::exception &e)
             {
-                RCF_LOG_1()(e.what())(mThreadName) << "Thread pool: std::exception caught at top level."; 
+                RCF_LOG_1()(e)(mThreadName) << "Thread pool: std::exception caught at top level."; 
             }
             catch(...)
             {
@@ -632,29 +616,18 @@ namespace RCF {
 
         onDeinit();
 
-        std::string threadName = getThreadName();
-
-        // Remove ourselves from the list of threads.
-        if ( !threadInfoPtr->mAlreadyRemovedFromThreadPool )
         {
             Lock lock(mThreadsMutex);
             ThreadMap::iterator iter = mThreads.find(threadInfoPtr);
             if (iter != mThreads.end())
             {
-                ThreadPtr thisThreadPtr = iter->second;
-                thisThreadPtr->detach();
                 mThreads.erase(iter);
-                if ( mThreads.empty() )
-                {
-                    mAllThreadsStopped.notify_all();
-
-                    // When a ThreadPool stops, the last thread goes through here, and once it releases the lock, the ThreadPool will be destroyed.
-                    // So from here down we can't touch any ThreadPool members.
-                }
             }            
         }
 
-        RCF_LOG_2()(threadName) << "ThreadPool - thread terminating.";
+        RCF_LOG_2()(getThreadName()) << "ThreadPool - thread terminating.";
+
+        clearThreadLocalDataForThisThread();
     }
 
     // not synchronized
@@ -671,7 +644,7 @@ namespace RCF {
 
             {
                 Lock lock(mThreadsMutex);
-                RCF_ASSERT(mThreads.empty());
+                RCF_ASSERT(mThreads.empty())(mThreads.size());
                 mThreads.clear();
                 mBusyCount = 0;
             }
@@ -688,27 +661,31 @@ namespace RCF {
     {
         if (mStarted)
         {
-            // Signal threads to stop.
             mStopFlag = true;
 
-            if (mStopFunctor)
+            ThreadMap threads;
             {
-                mStopFunctor();
+                Lock lock(mThreadsMutex);
+                threads = mThreads;
             }
 
-            if (mAsioIoServicePtr)
+            ThreadMap::iterator iter;
+            for (
+                iter = threads.begin(); 
+                iter != threads.end(); 
+                ++iter)
             {
-                mAsioIoServicePtr->stopCycle();
-            }
-            
-            // Wait for the threads to remove themselves from the thread map.
-            bool stopped = false;
-            while ( !stopped )
-            {
-                using namespace std::chrono_literals;
-                Lock lock(mThreadsMutex);
-                mAllThreadsStopped.wait_for(lock, 1000ms);
-                stopped = mThreads.empty();
+                if (mStopFunctor)
+                {
+                    mStopFunctor();
+                }
+
+                if (mAsioIoServicePtr)
+                {
+                    mAsioIoServicePtr->stopCycle();
+                }
+
+                iter->second->join();
             }
 
             RCF_ASSERT( mThreads.empty() );

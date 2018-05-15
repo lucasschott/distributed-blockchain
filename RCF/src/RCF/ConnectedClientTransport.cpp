@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -20,17 +20,13 @@
 
 #include <RCF/ClientStub.hpp>
 #include <RCF/Exception.hpp>
-#include <RCF/Filter.hpp>
 #include <RCF/OverlappedAmi.hpp>
 #include <RCF/RcfSession.hpp>
 #include <RCF/ThreadLocalData.hpp>
-#include <RCF/Log.hpp>
-
-#include <chrono>
 
 namespace RCF {
 
-    class ClientFilterProxy : public Filter, Noncopyable
+    class ClientFilterProxy : public Filter, boost::noncopyable
     {
     public:
         ClientFilterProxy(
@@ -270,7 +266,7 @@ namespace RCF {
         {
         case -2:
             {
-                Exception e(RcfError_ClientReadTimeout);
+                Exception e(_RcfError_ClientReadTimeout());
                 RCF_THROW(e);
             }
             break;
@@ -278,8 +274,9 @@ namespace RCF {
         case -1:
             {
                 Exception e(
-                    RcfError_ClientReadFail,
-                    osError(err));
+                    _RcfError_ClientReadFail(),
+                    err,
+                    RcfSubsystem_Os);
 
                 RCF_THROW(e);
             }
@@ -287,13 +284,15 @@ namespace RCF {
 
         case  0:
             {
-                Exception e(RcfError_PeerDisconnect);
+                Exception e(_RcfError_PeerDisconnect());
                 RCF_THROW(e);
             }
             break;
 
         default:
-            RCF_ASSERT(0 < ret && ret <= static_cast<int>(mBytesRequested));
+            RCF_ASSERT(
+                0 < ret && ret <= static_cast<int>(mBytesRequested))
+                (ret)(mBytesRequested);
 
             mLastResponseSize += ret;
             mRunningTotalBytesReceived += ret;
@@ -395,7 +394,10 @@ namespace RCF {
         std::size_t bytesToWrite = bytesRequested;
         std::size_t bytesWritten = 0;
 
-        ScopeGuard guard([&]() { clearByteBuffers(mSlicedByteBuffers); });
+        using namespace boost::multi_index::detail;
+        scope_guard resizeGuard =
+            make_guard(clearByteBuffers, boost::ref(mSlicedByteBuffers));
+        RCF_UNUSED_VARIABLE(resizeGuard);
 
         while (true)
         {
@@ -407,10 +409,28 @@ namespace RCF {
 
             RCF_ASSERT(
                 0 < mBytesTransferred &&
-                mBytesTransferred <= lengthByteBuffers(mSlicedByteBuffers));
+                mBytesTransferred <= lengthByteBuffers(mSlicedByteBuffers))
+                (mBytesTransferred)(lengthByteBuffers(mSlicedByteBuffers));
 
             bytesToWrite -= mBytesTransferred;
             bytesWritten += mBytesTransferred;
+
+            if (
+                mClientProgressPtr.get() &&
+                (mClientProgressPtr->mTriggerMask & ClientProgress::Event))
+            {
+                ClientProgress::Action action = ClientProgress::Continue;
+
+                mClientProgressPtr->mProgressCallback(
+                    bytesWritten, bytesRequested,
+                    ClientProgress::Event,
+                    ClientProgress::Send,
+                    action);
+
+                RCF_VERIFY(
+                    action != ClientProgress::Cancel,
+                    Exception(_RcfError_ClientCancel()));
+            }
 
             if (bytesToWrite == 0)
             {
@@ -435,10 +455,29 @@ namespace RCF {
                 mTransportFilters.front()->read(buffer, bytesToRead);
 
             RCF_ASSERT(
-                0 < mBytesTransferred && mBytesTransferred <= bytesToRead);
+                0 < mBytesTransferred && mBytesTransferred <= bytesToRead)
+                (mBytesTransferred)(bytesRead);
 
             bytesToRead -= mBytesTransferred;
             bytesRead += mBytesTransferred;
+
+            if (
+                mClientProgressPtr.get() &&
+                (mClientProgressPtr->mTriggerMask & ClientProgress::Event))
+            {
+                ClientProgress::Action action = ClientProgress::Continue;
+
+                mClientProgressPtr->mProgressCallback(
+                    bytesRead,
+                    bytesRequested,
+                    ClientProgress::Event,
+                    ClientProgress::Receive,
+                    action);
+
+                RCF_VERIFY(
+                    action != ClientProgress::Cancel,
+                    Exception(_RcfError_ClientCancel()));
+            }
 
             if (bytesToRead == 0)
             {
@@ -534,7 +573,7 @@ namespace RCF {
             return;
         }
 
-        RCF_ASSERT(mTransportFilters.size() >= 2);
+        RCF_ASSERT_GTEQ(mTransportFilters.size() , 2);
 
         std::vector<FilterPtr>::const_iterator iter0(mTransportFilters.begin());
         std::vector<FilterPtr>::const_iterator iter1(mTransportFilters.end());
@@ -544,11 +583,6 @@ namespace RCF {
         iter1 -= 1;
         iter1 -= mWireFilters.size();
         filters.assign(iter0, iter1);
-    }
-
-    void ConnectedClientTransport::getWireFilters(std::vector<FilterPtr> & filters)
-    {
-        filters = mWireFilters;
     }
 
     void ConnectedClientTransport::setWireFilters(const std::vector<FilterPtr> & wireFilters)
@@ -613,14 +647,14 @@ namespace RCF {
             }
             else if (mReadBufferPos == 4)
             {
-                std::uint32_t length = *(std::uint32_t*)mReadBuffer.getPtr();
+                boost::uint32_t length = *(boost::uint32_t*)mReadBuffer.getPtr();
                 networkToMachineOrder(&length, sizeof(length), 1);
 
-                if ( getMaxIncomingMessageLength())
+                if (getMaxMessageLength())
                 {
                     RCF_VERIFY(
-                        0 < length && length <= getMaxIncomingMessageLength(),
-                        Exception(RcfError_ClientMessageLength));
+                        0 < length && length <= getMaxMessageLength(),
+                        Exception(_RcfError_ClientMessageLength()));
                 }
 
                 mReadBufferPtr->resize(4+length);
@@ -661,7 +695,7 @@ namespace RCF {
             }
             else 
             {
-                RCF_ASSERT( mWriteBufferPos == lengthByteBuffers(mByteBuffers));
+                RCF_ASSERT_EQ( mWriteBufferPos , lengthByteBuffers(mByteBuffers));
                 mByteBuffers.resize(0);
                 mSlicedByteBuffers.resize(0);
                 mpClientStub->onSendCompleted();
@@ -683,13 +717,13 @@ namespace RCF {
         if (mOverlappedPtr->mpTransport)
         {
             RCF_ASSERT(mOverlappedPtr->mpTransport == this);
-            RCF::Exception e(RcfError_ClientCancel);
+            RCF::Exception e(( _RcfError_ClientCancel() ));
             mpClientStub->onError(e);
         }
     }
 
     void ConnectedClientTransport::setTimer(
-        std::uint32_t timeoutMs,
+        boost::uint32_t timeoutMs,
         ClientTransportCallback *pClientStub)
     {
         mpClientStub = pClientStub;
@@ -698,11 +732,9 @@ namespace RCF {
 
         mOverlappedPtr->mOpType = Wait;
 
-        mAsioTimerPtr->expires_from_now(std::chrono::milliseconds(timeoutMs) );
+        mAsioTimerPtr->expires_from_now( boost::posix_time::milliseconds(timeoutMs) );
 
-        using namespace std::placeholders;
-
-        mAsioTimerPtr->async_wait( std::bind(
+        mAsioTimerPtr->async_wait( boost::bind(
             &OverlappedAmi::onTimerExpired, 
             mOverlappedPtr, 
             mOverlappedPtr->mIndex,
@@ -747,6 +779,41 @@ namespace RCF {
         else if (mPreState == Writing)
         {
             mWriteBufferPos += bytesTransferred;
+        }
+
+        if (
+            mClientProgressPtr.get() &&
+            (mClientProgressPtr->mTriggerMask & ClientProgress::Event))
+        {
+            ClientProgress::Action action = ClientProgress::Continue;
+
+            if (mPreState == Reading)
+            {
+                mClientProgressPtr->mProgressCallback(
+                    mReadBufferPos, 
+                    mReadBuffer.getLength(),
+                    ClientProgress::Event,
+                    ClientProgress::Receive,
+                    action);
+
+                RCF_VERIFY(
+                    action != ClientProgress::Cancel,
+                    Exception(_RcfError_ClientCancel()));
+            }
+            else if (mPreState == Writing)
+            {
+                mClientProgressPtr->mProgressCallback(
+                    mWriteBufferPos, 
+                    lengthByteBuffers(mByteBuffers),
+                    ClientProgress::Event,
+                    ClientProgress::Send,
+                    action);
+
+                RCF_VERIFY(
+                    action != ClientProgress::Cancel,
+                    Exception(_RcfError_ClientCancel()));
+            }
+
         }
 
         transition();

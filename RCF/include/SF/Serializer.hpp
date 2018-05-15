@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,32 +11,40 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
-/// @file
-
 #ifndef INCLUDE_SF_SERIALIZER_HPP
 #define INCLUDE_SF_SERIALIZER_HPP
 
+#include <boost/mpl/assert.hpp>
+#include <boost/mpl/or.hpp>
+
 #include <RCF/Exception.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/MemStream.hpp>
 #include <RCF/TypeTraits.hpp>
 
 #include <SF/Archive.hpp>
 #include <SF/I_Stream.hpp>
 #include <SF/SerializeFundamental.hpp>
 #include <SF/SfNew.hpp>
-#include <RCF/Tools.hpp>
+#include <SF/Tools.hpp>
+
+
+namespace boost {
+    namespace serialization {
+        template<class Base, class Derived>
+        const Base & base_object(const Derived & d);
+    }
+}
 
 namespace SF {
 
     // Generic serializer, subclassed by all other serializers.
 
-    class RCF_EXPORT SerializerBase : Noncopyable
+    class RCF_EXPORT SerializerBase : boost::noncopyable
     {
     private:
         void                invokeRead(Archive &ar);
@@ -109,6 +117,21 @@ namespace SF {
 #ifdef _MSC_VER
 #pragma warning( pop )
 #endif
+    /*
+    template<typename T> struct GetIndirection                         { typedef boost::mpl::int_<0> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T *>                    { typedef boost::mpl::int_<1> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const *>              { typedef boost::mpl::int_<1> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T * const>              { typedef boost::mpl::int_<1> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const * const>        { typedef boost::mpl::int_<1> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T **>                   { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T **const>              { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T *const*>              { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const**>              { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T *const*const>         { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const**const>         { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const*const*>         { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    template<typename T> struct GetIndirection<T const*const*const>    { typedef boost::mpl::int_<2> Level; typedef T Base; };
+    */
 
     template<typename PPT>
     struct GetIndirection
@@ -118,13 +141,13 @@ namespace SF {
         typedef typename RCF::IsPointer<PT>::type         is_double;
 
         typedef
-        typename RCF::If<
+        typename boost::mpl::if_<
             is_double,
-            RCF::Int<2>,
-            typename RCF::If<
+            boost::mpl::int_<2>,
+            typename boost::mpl::if_<
                 is_single,
-                RCF::Int<1>,
-                RCF::Int<0>
+                boost::mpl::int_<1>,
+                boost::mpl::int_<0>
             >::type
         >::type Level;
 
@@ -144,9 +167,9 @@ namespace SF {
     inline void invokeCustomSerializer(
         T **ppt, 
         Archive &ar, 
-        int)
+        RCF_PFTO_HACK int)
     {
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
         Serializer<T>(ppt).invoke(ar);
     }
 
@@ -154,11 +177,11 @@ namespace SF {
     inline void invokeSerializer(
         U *, 
         T *, 
-        RCF::Int<0> *,
+        boost::mpl::int_<0> *, 
         const U &u, 
         Archive &ar)
     {
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
         T *pt = const_cast<T *>(&u);
         invokeCustomSerializer( (T **) (&pt), ar, 0);
     }
@@ -167,11 +190,11 @@ namespace SF {
     inline void invokeSerializer(
         U *, 
         T *, 
-        RCF::Int<1> *,
+        boost::mpl::int_<1> *, 
         const U &u, 
         Archive &ar)
     {
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
         invokeCustomSerializer( (T **) (&u), ar, 0);
     }
 
@@ -179,11 +202,11 @@ namespace SF {
     inline void invokeSerializer(
         U *, 
         T *, 
-        RCF::Int<2> *,
+        boost::mpl::int_<2> *, 
         const U &u, 
         Archive &ar)
     {
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
         invokeCustomSerializer( (T**) (u), ar, 0);
     }
 
@@ -192,7 +215,8 @@ namespace SF {
     {
         typedef typename GetIndirection<U>::Level Level;
         typedef typename GetIndirection<U>::Base T;
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
+        //BOOST_MPL_ASSERT(( boost::mpl::not_< boost::is_const<T> > ));
         invokeSerializer( (U *) 0, (T *) 0, (Level *) 0, u, ar);
     }
 
@@ -234,13 +258,13 @@ namespace SF {
 
         if (ar.isRead())
         {
-            std::int32_t n = 0;
+            boost::int32_t n = 0;
             ar & n;
             t = T(n);
         }
         else /* if (ar.isWrite())) */
         {
-            std::int32_t n = t;
+            boost::int32_t n = t;
             ar & n;
         }
     }
@@ -258,9 +282,13 @@ namespace SF {
         // *  The intention was to provide an external SF serialization function, 
         //    but the external serialization function definition is incorrect and 
         //    hence not visible to the framework.
-               
+        
+        // *  The intention was to serialize this class through Boost.Serialization,
+        //    in which case RCF_USE_BOOST_SERIALIZATION should be defined and 
+        //    RCF_USE_SF_SERIALIZATION should be undefined.
+        
         // *  The class is a Protocol Buffers generated class, and the intention 
-        //    was to serialize it as such, in which case RCF_FEATURE_PROTOBUF=1
+        //    was to serialize it as such, in which case RCF_USE_PROTOBUF 
         //    needs to be defined.
 
         t.serialize(archive);
@@ -308,7 +336,7 @@ namespace SF {
         Archive &                           archive, 
         T &                                 t)
     {
-        typedef typename std::is_enum<T>::type type;
+        typedef typename boost::is_enum<T>::type type;
         serializeEnumOrNot(archive, t, (type *) NULL);
     }
 
@@ -316,7 +344,7 @@ namespace SF {
     inline void serialize_vc6(
         Archive &                           archive, 
         T &                                 t,
-        const unsigned int)
+        const unsigned RCF_PFTO_HACK int)
     {
         serialize(archive, t);
     }
@@ -325,9 +353,9 @@ namespace SF {
     inline void preserialize(
         Archive &                           archive, 
         T *&                                pt,
-        const unsigned int)
+        const unsigned RCF_PFTO_HACK int)
     {
-        static_assert(!RCF::IsPointer<T>::value, "Incorrect serialization code.");
+        BOOST_MPL_ASSERT(( boost::mpl::not_< RCF::IsPointer<T> > ));
         typedef typename RCF::RemoveCv<T>::type U;
         serialize_vc6(archive, (U &) *pt, static_cast<const unsigned int>(0) );
     }
@@ -357,7 +385,6 @@ namespace SF {
         }
     }
 
-/// Instructs RCF to serialize enum class EnumType, as a BaseType object.
 #define SF_SERIALIZE_ENUM_CLASS(EnumType, BaseType)             \
     void serialize(SF::Archive & ar, EnumType & e)              \
     {                                                           \
@@ -408,7 +435,7 @@ namespace SF {
         {
             if (!SF::Registry::getSingleton().isTypeRegistered( typeid(**ppt)))
             {
-                RCF::Exception e(RCF::RcfError_SfTypeRegistration, typeid(**ppt).name());
+                RCF::Exception e(RCF::_SfError_TypeRegistration(typeid(**ppt).name()));
                 RCF_THROW(e);
             }
             return true;

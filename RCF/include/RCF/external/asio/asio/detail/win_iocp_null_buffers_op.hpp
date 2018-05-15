@@ -2,7 +2,7 @@
 // detail/win_iocp_null_buffers_op.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,7 +19,7 @@
 
 #if defined(ASIO_HAS_IOCP)
 
-#include "RCF/external/asio/asio/detail/addressof.hpp"
+#include <boost/utility/addressof.hpp>
 #include "RCF/external/asio/asio/detail/bind_handler.hpp"
 #include "RCF/external/asio/asio/detail/buffer_sequence_adapter.hpp"
 #include "RCF/external/asio/asio/detail/fenced_block.hpp"
@@ -41,11 +41,11 @@ public:
   ASIO_DEFINE_HANDLER_PTR(win_iocp_null_buffers_op);
 
   win_iocp_null_buffers_op(socket_ops::weak_cancel_token_type cancel_token,
-      Handler& handler)
+      Handler handler)
     : reactor_op(&win_iocp_null_buffers_op::do_perform,
         &win_iocp_null_buffers_op::do_complete),
       cancel_token_(cancel_token),
-      handler_(ASIO_MOVE_CAST(Handler)(handler))
+      handler_(handler)
   {
   }
 
@@ -55,16 +55,11 @@ public:
   }
 
   static void do_complete(io_service_impl* owner, operation* base,
-      const asio::error_code& result_ec,
-      std::size_t bytes_transferred)
+      asio::error_code ec, std::size_t bytes_transferred)
   {
-    asio::error_code ec(result_ec);
-
     // Take ownership of the operation object.
     win_iocp_null_buffers_op* o(static_cast<win_iocp_null_buffers_op*>(base));
-    ptr p = { asio::detail::addressof(o->handler_), o, o };
-
-    ASIO_HANDLER_COMPLETION((o));
+    ptr p = { boost::addressof(o->handler_), o, o };
 
     // The reactor may have stored a result in the operation object.
     if (o->ec_)
@@ -91,16 +86,14 @@ public:
     // deallocated the memory here.
     detail::binder2<Handler, asio::error_code, std::size_t>
       handler(o->handler_, ec, bytes_transferred);
-    p.h = asio::detail::addressof(handler.handler_);
+    p.h = boost::addressof(handler.handler_);
     p.reset();
 
     // Make the upcall if required.
     if (owner)
     {
-      fenced_block b(fenced_block::half);
-      ASIO_HANDLER_INVOCATION_BEGIN((handler.arg1_, handler.arg2_));
+      asio::detail::fenced_block b;
       asio_handler_invoke_helpers::invoke(handler, handler.handler_);
-      ASIO_HANDLER_INVOCATION_END;
     }
   }
 

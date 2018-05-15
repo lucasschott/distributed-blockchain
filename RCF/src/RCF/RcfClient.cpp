@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,15 +11,12 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <RCF/RcfClient.hpp>
-
-#include <RCF/ClientStub.hpp>
-#include <RCF/ClientTransport.hpp>
 
 namespace RCF {
 
@@ -42,49 +39,50 @@ namespace RCF {
     I_RcfClient::I_RcfClient(
         const std::string &     interfaceName, 
         const Endpoint &        endpoint, 
-        const std::string &     serverBindingName_)
+        const std::string &     targetName_)
     {
         mInterfaceName = interfaceName;
-        std::string serverBindingName = serverBindingName_;
-        if ( serverBindingName.empty())
+        std::string targetName = targetName_;
+        if (targetName.empty())
         {
-            serverBindingName = mInterfaceName;
+            targetName = mInterfaceName;
         }
-        ClientStubPtr clientStubPtr( new ClientStub(mInterfaceName, serverBindingName) );
+        ClientStubPtr clientStubPtr( new ClientStub(mInterfaceName, targetName) );
         clientStubPtr->setEndpoint(endpoint);
         setClientStubPtr(clientStubPtr);
     }
 
     I_RcfClient::I_RcfClient(
         const std::string &     interfaceName, 
-        ClientTransportUniquePtr  clientTransportUniquePtr, 
-        const std::string &     serverBindingName_)
+        ClientTransportAutoPtr  clientTransportAutoPtr, 
+        const std::string &     targetName_)
     {
         mInterfaceName = interfaceName;
-        std::string serverBindingName = serverBindingName_;
-        if ( serverBindingName.empty())
+        std::string targetName = targetName_;
+        if (targetName.empty())
         {
-            serverBindingName = mInterfaceName;
+            targetName = mInterfaceName;
         }
-        ClientStubPtr clientStubPtr( new ClientStub(mInterfaceName, serverBindingName) );
-        clientStubPtr->setTransport(std::move(clientTransportUniquePtr));
+        ClientStubPtr clientStubPtr( new ClientStub(mInterfaceName, targetName) );
+        clientStubPtr->setTransport(clientTransportAutoPtr);
         setClientStubPtr(clientStubPtr);
     }
 
     I_RcfClient::I_RcfClient(
         const std::string &     interfaceName, 
         const ClientStub &      clientStub, 
-        const std::string &     serverBindingName_)
+        const std::string &     targetName_)
     {
         mInterfaceName = interfaceName;
-        std::string serverBindingName = serverBindingName_;
-        if ( serverBindingName.empty())
+        std::string targetName = targetName_;
+        if (targetName.empty())
         {
-            serverBindingName = mInterfaceName;
+            targetName = mInterfaceName;
         }
         ClientStubPtr clientStubPtr( new ClientStub(clientStub) );
         clientStubPtr->setInterfaceName(mInterfaceName);
-        clientStubPtr->setServerBindingName(serverBindingName);
+        clientStubPtr->setTargetName(targetName);
+        clientStubPtr->setTargetToken(Token());
         setClientStubPtr(clientStubPtr);
     }
 
@@ -93,10 +91,11 @@ namespace RCF {
         mInterfaceName = interfaceName;
         if (rhs.getClientStubPtr())
         {
-            const std::string & serverBindingName = mInterfaceName;
+            const std::string & targetName = mInterfaceName;
             ClientStubPtr clientStubPtr( new ClientStub(rhs.getClientStub()));
             clientStubPtr->setInterfaceName(mInterfaceName);
-            clientStubPtr->setServerBindingName(serverBindingName);
+            clientStubPtr->setTargetName(targetName);
+            clientStubPtr->setTargetToken(Token());
             setClientStubPtr(clientStubPtr);
         }
     }

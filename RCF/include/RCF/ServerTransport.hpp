@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -24,16 +24,34 @@
 #include <string>
 #include <vector>
 
-#include <cstdint>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
 
+#include <RCF/ByteBuffer.hpp>
 #include <RCF/Enums.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/RcfFwd.hpp>
+#include <RCF/Filter.hpp>
 #include <RCF/ThreadLibrary.hpp>
 
 namespace RCF {
 
-    /// Describes the network address of a remote peer.
+    class Filter;
+    class Endpoint;
+    class ClientTransport;
+    class NetworkSession;
+    class StubEntry;
+    class RcfSession;
+
+    typedef boost::shared_ptr<Filter>               FilterPtr;
+    typedef std::auto_ptr<ClientTransport>        ClientTransportAutoPtr;
+    typedef boost::shared_ptr<StubEntry>            StubEntryPtr;
+
+    class ServerTransport;
+    typedef boost::shared_ptr<ServerTransport>    ServerTransportPtr;
+    typedef std::auto_ptr<ServerTransport>        ServerTransportAutoPtr;
+
+    typedef boost::shared_ptr<RcfSession>           RcfSessionPtr;
+
     class RemoteAddress
     {
     public:
@@ -46,14 +64,10 @@ namespace RCF {
         }
     };
 
-    enum TransportProtocol;
-    enum TransportType;
-
-    /// Indicates that no remote address is available.
     class NoRemoteAddress : public RemoteAddress
     {};
    
-    class RCF_EXPORT NetworkSession : public std::enable_shared_from_this<NetworkSession>
+    class NetworkSession : public boost::enable_shared_from_this<NetworkSession>
     {
     public:
 
@@ -78,39 +92,36 @@ namespace RCF {
         virtual void        getTransportFilters(std::vector<FilterPtr> &filters) = 0;
         void                setEnableReconnect(bool enableReconnect);
         bool                getEnableReconnect();
-        
-        virtual void        getWireFilters(std::vector<FilterPtr> &filters);
 
-
-
-        std::uint64_t       getTotalBytesReceived() const;
-        std::uint64_t       getTotalBytesSent() const;
+        boost::uint64_t     getTotalBytesReceived() const;
+        boost::uint64_t     getTotalBytesSent() const;
 
         RcfSessionPtr       getSessionPtr() const;
 
-        std::uint32_t       getLastActivityTimestamp() const;
+        boost::uint32_t     getLastActivityTimestamp() const;
         void                setLastActivityTimestamp();
 
     protected:
-        bool                mEnableReconnect;
-        std::uint64_t       mBytesReceivedCounter;
-        std::uint64_t       mBytesSentCounter;
-        std::uint32_t       mLastActivityTimestampMs;
+        bool                    mEnableReconnect;
+        boost::uint64_t         mBytesReceivedCounter;
+        boost::uint64_t         mBytesSentCounter;
+        boost::uint32_t         mLastActivityTimestampMs;
 
-        RcfSessionPtr       mRcfSessionPtr;
+        RcfSessionPtr           mRcfSessionPtr;
 
     };
 
-    typedef std::shared_ptr<NetworkSession>     NetworkSessionPtr;
-    typedef std::weak_ptr<NetworkSession>       NetworkSessionWeakPtr;
+    typedef boost::shared_ptr<NetworkSession>   NetworkSessionPtr;
+    typedef boost::weak_ptr<NetworkSession>     NetworkSessionWeakPtr;
 
     class RcfSession;
-    typedef std::shared_ptr<RcfSession>         RcfSessionPtr;
+    typedef boost::shared_ptr<RcfSession>       RcfSessionPtr;
     
+    typedef RcfSession                          I_Session;
     typedef RcfSessionPtr                       SessionPtr;
 
     class ThreadPool;
-    typedef std::shared_ptr<ThreadPool>         ThreadPoolPtr;
+    typedef boost::shared_ptr<ThreadPool>       ThreadPoolPtr;
 
     enum RpcProtocol
     {
@@ -129,6 +140,10 @@ namespace RCF {
         virtual ServerTransportPtr 
                         clone() = 0;
 
+        // Deprecated - use setMaxIncomingMessageLength()/getMaxIncomingMessageLength() instead.
+        ServerTransport & setMaxMessageLength(std::size_t maxMessageLength);
+        std::size_t         getMaxMessageLength() const;
+
         // *** SWIG BEGIN ***
 
         /// Returns the transport type of this server transport.
@@ -136,30 +151,30 @@ namespace RCF {
 
         /// Sets maximum incoming message length. Incoming messages that are larger
         /// than this size will be dropped.
-        void                setMaxIncomingMessageLength(std::size_t maxMessageLength);
+        ServerTransport & setMaxIncomingMessageLength(std::size_t maxMessageLength);
 
         /// Returns maximum incoming message length.
         std::size_t         getMaxIncomingMessageLength() const;
 
         /// Sets the maximum number of simultaneous connections to the server transport.
-        void                setConnectionLimit(std::size_t connectionLimit);
+        ServerTransport & setConnectionLimit(std::size_t connectionLimit);
 
         /// Returns the maximum number of simultaneous connections to the server transport.
         std::size_t         getConnectionLimit() const;
 
         /// Sets the initial number of listening connections that are created when the server transport starts.
-        void                setInitialNumberOfConnections(std::size_t initialNumberOfConnections);
+        ServerTransport & setInitialNumberOfConnections(std::size_t initialNumberOfConnections);
 
         /// Returns the initial number of listening connections that are created when the server transport starts.
         std::size_t         getInitialNumberOfConnections() const;
 
         /// Sets the thread pool that the server transport will use.
-        void                setThreadPool(ThreadPoolPtr threadPoolPtr);
+        ServerTransport & setThreadPool(ThreadPoolPtr threadPoolPtr);
 
         /// Sets the list of supported protocols the server transport supports. Clients
         /// that connect without using one of the supported protocols are dropped. If
         /// the list of supported protocols is empty, all protocols are allowed.
-        void                setSupportedProtocols(const std::vector<TransportProtocol> & protocols);
+        ServerTransport & setSupportedProtocols(const std::vector<TransportProtocol> & protocols);
 
         /// Returns the list of supported protocols for the server transport.
         const std::vector<TransportProtocol> & getSupportedProtocols() const;
@@ -206,17 +221,17 @@ namespace RCF {
 
         virtual ~ServerTransportEx() {}
 
-        virtual ClientTransportUniquePtr 
+        virtual ClientTransportAutoPtr 
             createClientTransport(
                 const Endpoint &endpoint) = 0;
        
         virtual SessionPtr 
             createServerSession(
-                ClientTransportUniquePtr & clientTransportUniquePtr,
-                RcfClientPtr stubEntryPtr,
+                ClientTransportAutoPtr & clientTransportAutoPtr,
+                StubEntryPtr stubEntryPtr,
                 bool keepClientConnection) = 0;
 
-        virtual ClientTransportUniquePtr 
+        virtual ClientTransportAutoPtr 
             createClientTransport(
                 SessionPtr sessionPtr) = 0;
        

@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -22,14 +22,12 @@
 #include <RCF/Filter.hpp>
 #include <RCF/ByteBuffer.hpp>
 
-#include <cstdint>
-
 namespace RCF {
 
     class AsioNetworkSession;
 
     class RcfSession;
-    typedef std::shared_ptr<RcfSession> RcfSessionPtr;
+    typedef boost::shared_ptr<RcfSession> RcfSessionPtr;
 
     class HttpSession
     {
@@ -41,17 +39,19 @@ namespace RCF {
         RcfSessionPtr               mRcfSessionPtr;
 
         bool                        mRequestInProgress;
-        std::uint32_t               mLastTouchMs;
+        boost::uint32_t             mLastTouchMs;
 
         std::string                 mHttpSessionId;
-        std::uint32_t               mHttpSessionIndex;
+        boost::uint32_t             mHttpSessionIndex;
         std::vector<FilterPtr>      mTransportFilters;
 
         ByteBuffer                  mCachedReadBuffer;
         std::size_t                 mCachedReadBytesRequested;
+
+
     };
 
-    typedef std::shared_ptr<HttpSession> HttpSessionPtr;
+    typedef boost::shared_ptr<HttpSession> HttpSessionPtr;
 
     class HttpSessionFilter : public Filter
     {
@@ -84,8 +84,10 @@ namespace RCF {
         const std::vector<FilterPtr>    mNoFilters;
 
         char                            mDummy;
+
     };
 
 } // namespace RCF
+
 
 #endif // ! INCLUDE_RCF_HTTPSESSIONFILTER_HPP

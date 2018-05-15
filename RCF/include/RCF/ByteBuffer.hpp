@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,24 +19,23 @@
 #ifndef INCLUDE_RCF_BYTEBUFFER_HPP
 #define INCLUDE_RCF_BYTEBUFFER_HPP
 
-#include <functional>
-#include <memory>
 #include <string>
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
+
 #include <RCF/Export.hpp>
+#include <RCF/MemStream.hpp>
+#include <RCF/MinMax.hpp>
+#include <RCF/ReallocBuffer.hpp>
 
 namespace RCF {
 
     class MemOstream;
-    typedef std::shared_ptr<MemOstream> MemOstreamPtr;
+    typedef boost::shared_ptr<MemOstream> MemOstreamPtr;
 
-    class ReallocBuffer;
-    typedef std::shared_ptr<ReallocBuffer> ReallocBufferPtr;
+    // ByteBuffer class for facilitating zero-copy transmission and reception
 
-    /// ByteBuffer is a internally reference counted buffer class, designed to hold a large chunk of data and allow
-    /// it to be passed around in a program, without incurring any copying overhead. It is conceptually similar to a
-    /// std::shared_ptr< std::vector<char> >.
     class RCF_EXPORT ByteBuffer
     {
     public:
@@ -56,7 +55,7 @@ namespace RCF {
 
         explicit
         ByteBuffer(
-            std::shared_ptr<std::vector<char> > spvc,
+            boost::shared_ptr<std::vector<char> > spvc,
             bool readOnly = false);
 
         explicit
@@ -83,27 +82,27 @@ namespace RCF {
         ByteBuffer(
             char *pv,
             std::size_t pvlen,
-            std::shared_ptr<MemOstream> spos,
+            boost::shared_ptr<MemOstream> spos,
             bool readOnly = false);
 
         ByteBuffer(
             char *pv,
             std::size_t pvlen,
             std::size_t leftMargin,
-            std::shared_ptr<MemOstream> spos,
+            boost::shared_ptr<MemOstream> spos,
             bool readOnly = false);
 
         ByteBuffer(
             char *pv,
             std::size_t pvlen,
-            std::shared_ptr<std::vector<char> > spvc,
+            boost::shared_ptr<std::vector<char> > spvc,
             bool readOnly = false);
 
         ByteBuffer(
             char *pv,
             std::size_t pvlen,
             std::size_t leftMargin,
-            std::shared_ptr<std::vector<char> > spvc,
+            boost::shared_ptr<std::vector<char> > spvc,
             bool readOnly = false);
 
         ByteBuffer(
@@ -144,9 +143,9 @@ namespace RCF {
 
     private:
         // sentries
-        std::shared_ptr< std::vector<char> >      mSpvc;
-        std::shared_ptr< MemOstream >             mSpos;
-        std::shared_ptr< ReallocBuffer >          mSprb;
+        boost::shared_ptr< std::vector<char> >      mSpvc;
+        boost::shared_ptr< MemOstream >             mSpos;
+        boost::shared_ptr< ReallocBuffer >          mSprb;
 
         char *                                      mPv;
         std::size_t                                 mPvlen;
@@ -159,11 +158,53 @@ namespace RCF {
     RCF_EXPORT std::size_t lengthByteBuffers(
         const std::vector<ByteBuffer> &byteBuffers);
 
-    RCF_EXPORT void forEachByteBuffer(
-        std::function<void(const ByteBuffer&)> functor,
+    template<typename Functor>
+    inline void forEachByteBuffer(
+        const Functor &functor,
         const std::vector<ByteBuffer> &byteBuffers,
         std::size_t offset,
-        std::size_t length = -1);
+        std::size_t length = -1)
+    {
+        std::size_t pos0        = 0;
+        std::size_t pos1        = 0;
+        std::size_t remaining   = length;
+
+        for (std::size_t i=0; i<byteBuffers.size(); ++i)
+        {
+            pos1 = pos0 + byteBuffers[i].getLength() ;
+
+            if (pos1 <= offset)
+            {
+                pos0 = pos1;
+            }
+            else if (pos0 <= offset && offset < pos1)
+            {
+                std::size_t len = RCF_MIN(pos1-offset, remaining);
+
+                ByteBuffer byteBuffer(
+                    byteBuffers[i],
+                    offset-pos0,
+                    len);
+
+                functor(byteBuffer);
+                pos0 = pos1;
+                remaining -= len;
+            }
+            else if (remaining > 0)
+            {
+                std::size_t len = RCF_MIN(pos1-pos0, remaining);
+
+                ByteBuffer byteBuffer(
+                    byteBuffers[i],
+                    0,
+                    len);
+
+                functor(byteBuffer);
+                pos1 = pos0;
+                remaining -= len;
+            }
+        }
+    }
     
     RCF_EXPORT ByteBuffer sliceByteBuffer(
         const std::vector<ByteBuffer> &slicedBuffers,

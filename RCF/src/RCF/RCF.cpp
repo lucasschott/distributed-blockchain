@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,12 +11,32 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
+#include <boost/config.hpp>
+#include <boost/version.hpp>
+
 #include <RCF/Config.hpp>
+
+// Problems with BSer. Include valarray early so it doesn't get trampled by min/max macro definitions.
+#if defined(_MSC_VER) && _MSC_VER == 1310 && RCF_FEATURE_BOOST_SERIALIZATION==1
+#include <valarray>
+#endif
+
+// Problems with BSer. Suppress some static warnings.
+#if defined(_MSC_VER) && RCF_FEATURE_BOOST_SERIALIZATION==1 && BOOST_VERSION >= 104100
+#pragma warning( push )
+#pragma warning( disable : 4308 )  // warning C4308: negative integral constant converted to unsigned type
+#endif
+
+// VS 2013 Update 3 - a number of WinSock functions have been deprecated.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996) // error C4996: 'WSAAddressToStringA': Use WSAAddressToStringW() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS to disable deprecated API warnings
+#endif
 
 #include "AmiThreadPool.cpp"
 #include "AsioHandlerCache.cpp"
@@ -25,15 +45,17 @@
 #include "ByteBuffer.cpp"
 #include "ByteOrdering.cpp"
 #include "Certificate.cpp"
+#include "CheckRtti.cpp"
 #include "ClientStub.cpp"
 #include "ClientStubLegacy.cpp"
 #include "ClientTransport.cpp"
 #include "ConnectedClientTransport.cpp"
 #include "CurrentSerializationProtocol.cpp"
 #include "CurrentSession.cpp"
+#include "CustomAllocator.cpp"
 #include "DynamicLib.cpp"
+#include "Endpoint.cpp"
 #include "Enums.cpp"
-#include "ErrorMsg.cpp"
 #include "Exception.cpp"
 #include "Filter.cpp"
 #include "FilterService.cpp"
@@ -43,14 +65,12 @@
 #include "IpAddress.cpp"
 #include "IpClientTransport.cpp"
 #include "IpServerTransport.cpp"
-#include "Log.cpp"
 #include "Marshal.cpp"
 #include "MemStream.cpp"
 #include "MethodInvocation.cpp"
 #include "ObjectPool.cpp"
 #include "PerformanceData.cpp"
 #include "PeriodicTimer.cpp"
-#include "Platform.cpp"
 #include "RcfClient.cpp"
 #include "RcfServer.cpp"
 #include "RcfSession.cpp"
@@ -61,18 +81,35 @@
 #include "ServerTask.cpp"
 #include "ServerTransport.cpp"
 #include "Service.cpp"
-#include "Tchar.cpp"
+#include "StubEntry.cpp"
+#include "StubFactory.cpp"
 #include "ThreadLibrary.cpp"
 #include "ThreadLocalData.cpp"
 #include "ThreadPool.cpp"
 #include "TimedBsdSockets.cpp"
 #include "Timer.cpp"
+#include "Token.cpp"
 #include "Tools.cpp"
 #include "UsingBsdSockets.cpp"
-#include "Uuid.cpp"
 #include "Version.cpp"
 
-#ifdef RCF_WINDOWS
+#include "util/Log.cpp"
+#include "util/Platform.cpp"
+
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable : 4244)
+#endif
+
+#include <RCF/utf8/convert.cpp>
+#include <RCF/utf8/utf8_codecvt_facet.cpp>
+#include <RCF/thread/impl/thread_src.cpp>
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
+
+#ifdef BOOST_WINDOWS
 #include "Win32Username.cpp"
 #include "Win32Certificate.cpp"
 #endif
@@ -112,11 +149,6 @@
 #include "SessionTimeoutService.cpp"
 #endif
 
-#if RCF_FEATURE_PROXYENDPOINT==1
-#include "ProxyEndpoint.cpp"
-#include "ProxyEndpointTransport.cpp"
-#include "ProxyEndpointService.cpp"
-#endif
 
 #if RCF_FEATURE_PUBSUB==1
 #include "MulticastClientTransport.cpp"
@@ -125,6 +157,11 @@
 #include "SubscriptionServiceLegacy.cpp"
 #endif
 
+
+#if RCF_FEATURE_LEGACY==1
+#include "ObjectFactoryService.cpp"
+#include "SessionObjectFactoryService.cpp"
+#endif
 
 #include <RCF/Asio.hpp> // For RCF_HAS_LOCAL_SOCKETS
 
@@ -181,10 +218,22 @@ namespace RCF {
 #include "FileIoThreadPool.cpp"
 #include "FileTransferService.cpp"
 #include "FileStream.cpp"
-#include "FileSystem.cpp"
 #endif
 
 
+#if RCF_FEATURE_JSON==1
+#include "JsonRpc.cpp"
+#endif
+
 #if RCF_FEATURE_LOCALSOCKET==1 || RCF_FEATURE_NAMEDPIPE==1
 #include "NamedPipeEndpoint.cpp"
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+// Problems with BSer. Suppress some static warnings.
+#if defined(_MSC_VER) && RCF_FEATURE_BOOST_SERIALIZATION==1 && BOOST_VERSION >= 104100
+#pragma warning( pop )
 #endif

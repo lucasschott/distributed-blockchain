@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,33 +19,32 @@
 #ifndef INCLUDE_RCF_CLIENTTRANSPORT_HPP
 #define INCLUDE_RCF_CLIENTTRANSPORT_HPP
 
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include <boost/cstdint.hpp>
+#include <boost/weak_ptr.hpp>
+
 #include <RCF/AsioFwd.hpp>
+#include <RCF/Enums.hpp>
+#include <RCF/Filter.hpp>
+#include <RCF/ByteBuffer.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/RcfFwd.hpp>
 
 namespace RCF {
+
+    class Endpoint;
+    typedef boost::shared_ptr<Endpoint> EndpointPtr;
 
     class RcfServer;
 
     class OverlappedAmi;
-    typedef std::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
+    typedef boost::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
 
     class ClientStub;
     class RcfSession;
-    typedef std::weak_ptr<RcfSession> RcfSessionWeakPtr;
-
-    class ByteBuffer;
-
-    class Filter;
-    typedef std::shared_ptr<Filter> FilterPtr;
-
-    class ClientProgress;
-    typedef std::shared_ptr<ClientProgress> ClientProgressPtr;
+    typedef boost::weak_ptr<RcfSession> RcfSessionWeakPtr;
 
     class RCF_EXPORT ClientTransportCallback
     {
@@ -68,8 +67,6 @@ namespace RCF {
     };
 
     class ClientStub;
-
-    enum TransportType;
 
     /// Base class for all client transports.
     class RCF_EXPORT ClientTransport
@@ -100,33 +97,33 @@ namespace RCF {
         std::size_t getLastResponseSize();
 
         /// Returns the running total of bytes sent on the client transport.
-        std::uint64_t getRunningTotalBytesSent();
+        boost::uint64_t getRunningTotalBytesSent();
 
         /// Returns the running total of bytes received on the client transport.
-        std::uint64_t getRunningTotalBytesReceived();
+        boost::uint64_t getRunningTotalBytesReceived();
 
         /// Resets the bytes-sent and bytes-received running totals to zero.
         void resetRunningTotals();
 
         // *** SWIG END ***
 
-        void setClientProgressPtr(ClientProgressPtr clientProgressPtr);
+        
 
         virtual 
-        std::unique_ptr<ClientTransport> clone() const = 0;
+        std::auto_ptr<ClientTransport> clone() const = 0;
 
         virtual 
         EndpointPtr getEndpointPtr() const = 0;
        
         virtual 
         int send(
-            ClientTransportCallback &       clientStub, 
+            ClientTransportCallback &     clientStub, 
             const std::vector<ByteBuffer> & data, 
             unsigned int                    timeoutMs) = 0;
 
         virtual 
         int receive(
-            ClientTransportCallback &       clientStub, 
+            ClientTransportCallback &     clientStub, 
             ByteBuffer &                    byteBuffer, 
             unsigned int                    timeoutMs) = 0;
 
@@ -135,7 +132,7 @@ namespace RCF {
 
         virtual 
         void connect(
-            ClientTransportCallback &       clientStub, 
+            ClientTransportCallback &     clientStub, 
             unsigned int                    timeoutMs) = 0;
 
         virtual 
@@ -150,19 +147,21 @@ namespace RCF {
         void getTransportFilters(
             std::vector<FilterPtr> &        filters) = 0;
 
-        virtual
-            void getWireFilters(
-                std::vector<FilterPtr> &        filters);
+        // Deprecated - use setMaxIncomingMessageLength()/getMaxIncomingMessageLength() instead.
+        void setMaxMessageLength(std::size_t maxMessageLength);
+        std::size_t getMaxMessageLength() const;
+
 
         RcfSessionWeakPtr getRcfSession();
         void setRcfSession(RcfSessionWeakPtr rcfSessionWeakPtr);
+
 
         void setAsync(bool async);
 
         virtual void cancel();
 
         virtual void setTimer(
-            std::uint32_t timeoutMs,
+            boost::uint32_t timeoutMs,
             ClientTransportCallback * pClientStub = NULL) = 0;
 
         virtual void associateWithIoService(AsioIoService & ioService);
@@ -181,16 +180,19 @@ namespace RCF {
         std::size_t mLastRequestSize;
         std::size_t mLastResponseSize;
 
-        std::uint64_t mRunningTotalBytesSent;
-        std::uint64_t mRunningTotalBytesReceived;
-
-        ClientProgressPtr mClientProgressPtr;
+        boost::uint64_t mRunningTotalBytesSent;
+        boost::uint64_t mRunningTotalBytesReceived;
 
         bool mAsync;
 
         friend class ClientStub;
     };
-       
+
+    typedef boost::shared_ptr<ClientTransport> ClientTransportPtr;
+
+    typedef std::auto_ptr<ClientTransport> ClientTransportAutoPtr;
+
+    typedef boost::shared_ptr< ClientTransportAutoPtr > ClientTransportAutoPtrPtr;
 
 } // namespace RCF
 

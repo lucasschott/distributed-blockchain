@@ -2,7 +2,7 @@
 // read_until.hpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,14 +17,16 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 
-#if !defined(ASIO_NO_IOSTREAM)
+#if !defined(BOOST_NO_IOSTREAM)
 
 #include <cstddef>
+#include <boost/type_traits/is_function.hpp>
+#include <boost/type_traits/remove_pointer.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/detail/workaround.hpp>
 #include <string>
-#include "RCF/external/asio/asio/async_result.hpp"
 #include "RCF/external/asio/asio/basic_streambuf.hpp"
 #include "RCF/external/asio/asio/detail/regex_fwd.hpp"
-#include "RCF/external/asio/asio/detail/type_traits.hpp"
 #include "RCF/external/asio/asio/error.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
@@ -33,16 +35,30 @@ namespace asio {
 
 namespace detail
 {
-  char (&has_result_type_helper(...))[2];
-
-  template <typename T>
-  char has_result_type_helper(T*, typename T::result_type* = 0);
-
+#if BOOST_WORKAROUND(__CODEGEARC__, BOOST_TESTED_AT(0x610))
   template <typename T>
   struct has_result_type
   {
-    enum { value = (sizeof((has_result_type_helper)((T*)(0))) == 1) };
+    template <typename U> struct inner
+    {
+        struct big { char a[100]; };
+        static big helper(U, ...);
+        static char helper(U, typename U::result_type* = 0);
+    };
+    static const T& ref();
+    enum { value = (sizeof((inner<const T&>::helper)((ref)())) == 1) };
   };
+#else // BOOST_WORKAROUND(__CODEGEARC__, BOOST_TESTED_AT(0x610))
+  template <typename T>
+  struct has_result_type
+  {
+    struct big { char a[100]; };
+    template <typename U> static big helper(U, ...);
+    template <typename U> static char helper(U, typename U::result_type* = 0);
+    static const T& ref();
+    enum { value = (sizeof((helper)((ref)())) == 1) };
+  };
+#endif // BOOST_WORKAROUND(__CODEGEARC__, BOOST_TESTED_AT(0x610))
 } // namespace detail
 
 /// Type trait used to determine whether a type can be used as a match condition
@@ -56,8 +72,7 @@ struct is_match_condition
 #else
   enum
   {
-    value = asio::is_function<
-        typename asio::remove_pointer<T>::type>::value
+    value = boost::is_function<typename boost::remove_pointer<T>::type>::value
       || detail::has_result_type<T>::value
   };
 #endif
@@ -245,9 +260,6 @@ std::size_t read_until(SyncReadStream& s,
     asio::basic_streambuf<Allocator>& b, const std::string& delim,
     asio::error_code& ec);
 
-#if defined(ASIO_HAS_BOOST_REGEX) \
-  || defined(GENERATING_DOCUMENTATION)
-
 /// Read data into a streambuf until some part of the data it contains matches
 /// a regular expression.
 /**
@@ -339,9 +351,6 @@ template <typename SyncReadStream, typename Allocator>
 std::size_t read_until(SyncReadStream& s,
     asio::basic_streambuf<Allocator>& b, const boost::regex& expr,
     asio::error_code& ec);
-
-#endif // defined(ASIO_HAS_BOOST_REGEX)
-       // || defined(GENERATING_DOCUMENTATION)
 
 /// Read data into a streambuf until a function object indicates a match.
 /**
@@ -445,7 +454,7 @@ std::size_t read_until(SyncReadStream& s,
 template <typename SyncReadStream, typename Allocator, typename MatchCondition>
 std::size_t read_until(SyncReadStream& s,
     asio::basic_streambuf<Allocator>& b, MatchCondition match_condition,
-    typename enable_if<is_match_condition<MatchCondition>::value>::type* = 0);
+    typename boost::enable_if<is_match_condition<MatchCondition> >::type* = 0);
 
 /// Read data into a streambuf until a function object indicates a match.
 /**
@@ -501,7 +510,7 @@ template <typename SyncReadStream, typename Allocator, typename MatchCondition>
 std::size_t read_until(SyncReadStream& s,
     asio::basic_streambuf<Allocator>& b,
     MatchCondition match_condition, asio::error_code& ec,
-    typename enable_if<is_match_condition<MatchCondition>::value>::type* = 0);
+    typename boost::enable_if<is_match_condition<MatchCondition> >::type* = 0);
 
 /*@}*/
 /**
@@ -592,11 +601,9 @@ std::size_t read_until(SyncReadStream& s,
  * @c async_read_until operation.
  */
 template <typename AsyncReadStream, typename Allocator, typename ReadHandler>
-ASIO_INITFN_RESULT_TYPE(ReadHandler,
-    void (asio::error_code, std::size_t))
-async_read_until(AsyncReadStream& s,
+void async_read_until(AsyncReadStream& s,
     asio::basic_streambuf<Allocator>& b,
-    char delim, ASIO_MOVE_ARG(ReadHandler) handler);
+    char delim, ReadHandler handler);
 
 /// Start an asynchronous operation to read data into a streambuf until it
 /// contains a specified delimiter.
@@ -677,14 +684,9 @@ async_read_until(AsyncReadStream& s,
  * @c async_read_until operation.
  */
 template <typename AsyncReadStream, typename Allocator, typename ReadHandler>
-ASIO_INITFN_RESULT_TYPE(ReadHandler,
-    void (asio::error_code, std::size_t))
-async_read_until(AsyncReadStream& s,
+void async_read_until(AsyncReadStream& s,
     asio::basic_streambuf<Allocator>& b, const std::string& delim,
-    ASIO_MOVE_ARG(ReadHandler) handler);
-
-#if defined(ASIO_HAS_BOOST_REGEX) \
-  || defined(GENERATING_DOCUMENTATION)
+    ReadHandler handler);
 
 /// Start an asynchronous operation to read data into a streambuf until some
 /// part of its data matches a regular expression.
@@ -769,14 +771,9 @@ async_read_until(AsyncReadStream& s,
  * @c async_read_until operation.
  */
 template <typename AsyncReadStream, typename Allocator, typename ReadHandler>
-ASIO_INITFN_RESULT_TYPE(ReadHandler,
-    void (asio::error_code, std::size_t))
-async_read_until(AsyncReadStream& s,
+void async_read_until(AsyncReadStream& s,
     asio::basic_streambuf<Allocator>& b, const boost::regex& expr,
-    ASIO_MOVE_ARG(ReadHandler) handler);
-
-#endif // defined(ASIO_HAS_BOOST_REGEX)
-       // || defined(GENERATING_DOCUMENTATION)
+    ReadHandler handler);
 
 /// Start an asynchronous operation to read data into a streambuf until a
 /// function object indicates a match.
@@ -903,12 +900,10 @@ async_read_until(AsyncReadStream& s,
  */
 template <typename AsyncReadStream, typename Allocator,
     typename MatchCondition, typename ReadHandler>
-ASIO_INITFN_RESULT_TYPE(ReadHandler,
-    void (asio::error_code, std::size_t))
-async_read_until(AsyncReadStream& s,
+void async_read_until(AsyncReadStream& s,
     asio::basic_streambuf<Allocator>& b,
-    MatchCondition match_condition, ASIO_MOVE_ARG(ReadHandler) handler,
-    typename enable_if<is_match_condition<MatchCondition>::value>::type* = 0);
+    MatchCondition match_condition, ReadHandler handler,
+    typename boost::enable_if<is_match_condition<MatchCondition> >::type* = 0);
 
 /*@}*/
 
@@ -918,6 +913,6 @@ async_read_until(AsyncReadStream& s,
 
 #include "RCF/external/asio/asio/impl/read_until.hpp"
 
-#endif // !defined(ASIO_NO_IOSTREAM)
+#endif // !defined(BOOST_NO_IOSTREAM)
 
 #endif // ASIO_READ_UNTIL_HPP

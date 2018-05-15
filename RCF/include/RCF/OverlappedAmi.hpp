@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -19,8 +19,8 @@
 #ifndef INCLUDE_RCF_OVERLAPPEDAMI_HPP
 #define INCLUDE_RCF_OVERLAPPEDAMI_HPP
 
-#include <functional>
-#include <memory>
+#include <boost/function.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <RCF/Asio.hpp>
 #include <RCF/Enums.hpp>
@@ -32,9 +32,9 @@ namespace RCF {
     {
     public:
 
-        typedef std::function<void()> Cb;
+        typedef boost::function0<void> Cb;
 
-        // Need mutexPtr so that the mutex doesn't get destroyed before the lock.
+        // Need mutexPtr so that the mutex doesn't die before the lock.
         void set(Cb cb, LockPtr lockPtr, MutexPtr mutexPtr);
         void run();
         void clear();
@@ -47,18 +47,25 @@ namespace RCF {
 
 
     class OverlappedAmi;
-    typedef std::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
+    typedef boost::shared_ptr<OverlappedAmi> OverlappedAmiPtr;
 
     class ConnectedClientTransport;
 
     class OverlappedAmi : 
-        public std::enable_shared_from_this<OverlappedAmi>
+        public boost::enable_shared_from_this<OverlappedAmi>
     {
     public:
 
-        OverlappedAmi(ConnectedClientTransport *pTcpClientTransport);
+        OverlappedAmi(ConnectedClientTransport *pTcpClientTransport) : 
+            mpTransport(pTcpClientTransport),
+            mIndex(0),
+            mOpType(None)
+        {
+        }
 
-        ~OverlappedAmi();
+        ~OverlappedAmi()
+        {
+        }
 
         void onCompletion(
             std::size_t index,
@@ -75,7 +82,7 @@ namespace RCF {
         // TODO: should make these private.
 
         RecursiveMutex                      mMutex;
-        ConnectedClientTransport *          mpTransport;
+        ConnectedClientTransport * mpTransport;
         std::size_t                         mIndex;
         AsyncOpType                         mOpType;
 

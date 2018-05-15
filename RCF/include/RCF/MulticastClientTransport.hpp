@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -23,14 +23,15 @@
 #include <string>
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
+
 #include <RCF/ClientTransport.hpp>
 #include <RCF/Export.hpp>
 #include <RCF/ThreadLibrary.hpp>
 
 namespace RCF {
 
-    typedef std::shared_ptr< ClientTransportUniquePtr >       ClientTransportUniquePtrPtr;
-    typedef std::vector< ClientTransportUniquePtrPtr >        ClientTransportList;
+    typedef boost::shared_ptr< ClientTransportAutoPtr > ClientTransportAutoPtrPtr;
 
     // Special purpose client transport for sending messages in parallel on multiple sub-transports.
     class RCF_EXPORT MulticastClientTransport : public ClientTransport
@@ -39,15 +40,9 @@ namespace RCF {
 
         TransportType getTransportType();
 
-        std::unique_ptr<ClientTransport> clone() const;
+        std::auto_ptr<ClientTransport> clone() const;
 
         EndpointPtr getEndpointPtr() const;
-
-        void        doSendOnTransports(
-            Lock&                           lock,
-            ClientTransportList&            transportList,
-            const std::vector<ByteBuffer> & data,
-            unsigned int                    timeoutMs);
 
         int         send(
                         ClientTransportCallback &     clientStub, 
@@ -69,7 +64,7 @@ namespace RCF {
                         unsigned int                    timeoutMs);
 
         void        addTransport(
-                        ClientTransportUniquePtr          clientTransportUniquePtr);
+                        ClientTransportAutoPtr          clientTransportAutoPtr);
 
         void        setTransportFilters(
                         const std::vector<FilterPtr> &  filters);
@@ -77,7 +72,7 @@ namespace RCF {
         void        getTransportFilters(
                         std::vector<FilterPtr> &        filters);
 
-        void        setTimer(std::uint32_t timeoutMs, ClientTransportCallback *pClientStub);
+        void        setTimer(boost::uint32_t timeoutMs, ClientTransportCallback *pClientStub);
 
         void        dropIdleTransports();
         void        pingAllTransports();
@@ -90,15 +85,15 @@ namespace RCF {
 
         void        bringInNewTransports();
 
+        typedef std::vector< ClientTransportAutoPtrPtr >     ClientTransportList;
+
         Mutex                                           mClientTransportsMutex;
         ClientTransportList                             mClientTransports;
-        ClientTransportList                             mClientTransportsTemp;
-        ClientTransportList                             mClientTransportsSending;
 
         Mutex                                           mAddedClientTransportsMutex;
         ClientTransportList                             mAddedClientTransports;
 
-        ClientTransportUniquePtr                          mMulticastTemp;
+        ClientTransportAutoPtr                          mMulticastTemp;
     };
 
 } // namespace RCF

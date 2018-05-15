@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -25,6 +25,11 @@
 #include <RCF/Tools.hpp>
 #include <RCF/Base64.hpp>
 
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string.hpp>
+
+
 #if RCF_FEATURE_SSPI==0
 
 namespace RCF {
@@ -35,19 +40,19 @@ namespace RCF {
     public:
         NtlmWrapper()
         {
-            Exception e(RcfError_NotSupportedInThisBuild, "Windows authentication");
+            Exception e(_RcfError_NotSupportedInThisBuild("Windows authentication"));
             RCF_THROW(e);
         }
 
         void onPacketReceived(const std::string& packetReceived)
         {
-            Exception e(RcfError_NotSupportedInThisBuild, "Windows authentication");
+            Exception e(_RcfError_NotSupportedInThisBuild("Windows authentication"));
             RCF_THROW(e);
         }
 
         std::string getPacketToSend()
         {
-            Exception e(RcfError_NotSupportedInThisBuild, "Windows authentication");
+            Exception e(_RcfError_NotSupportedInThisBuild("Windows authentication"));
             RCF_THROW(e);
             return "";
         }
@@ -91,7 +96,7 @@ namespace RCF {
         std::string             mPacketToSend;
         std::string             mPacketReceived;
         std::size_t             mPacketReceivedPos;
-        std::unique_ptr<Filter>   mNtlmFilterPtr;
+        std::auto_ptr<Filter>   mNtlmFilterPtr;
 
     };
 
@@ -192,10 +197,6 @@ namespace RCF {
         mProxyAuthTypes.push_back(std::make_pair(HttpConnectFilter::AuthType_None, std::string()));
     }
 
-    HttpConnectFilter::~HttpConnectFilter()
-    {
-    }
-
     void HttpConnectFilter::resetState()
     {
         mPassThrough = false;
@@ -264,7 +265,7 @@ namespace RCF {
                 }
                 else if ( authType == HttpConnectFilter::AuthType_Basic )
                 {
-                    std::string username = toAstring(pClientStub->getHttpProxyUserName());
+                    std::string username = toAstring(pClientStub->getHttpProxyUsername());
                     std::string password = toAstring(pClientStub->getHttpProxyPassword());
                     std::string authValue = username + ":" + password;
 
@@ -340,14 +341,14 @@ namespace RCF {
 
         if ( shouldRetry )
         {
-            Exception e(RcfError_ProxyAuthRetry);
+            Exception e(_RcfError_ProxyAuthRetry());
             e.setShouldRetry(true);
             RCF_THROW(e);
         }
         else
         {
             ClientStub * pClientStub = getTlsClientStubPtr();
-            if ( pClientStub && pClientStub->getUserName().empty() )
+            if ( pClientStub && pClientStub->getUsername().empty() )
             {
                 // No credentials supplied, so the only thing that could have worked in any case is NTLM with logged on credentials.
                 std::string realmValue;
@@ -364,13 +365,13 @@ namespace RCF {
                     pClientStub->setHttpProxyRealm(toTstring(realmValue));
                 }
 
-                Exception e(RcfError_ProxyCredentialsNeeded);
+                Exception e(_RcfError_ProxyCredentialsNeeded());
                 RCF_THROW(e);
             }
             else
             {
                 // Credentials were supplied, but the proxy did not recognize them.
-                Exception e(RcfError_ProxyCredentialsInvalid);
+                Exception e(_RcfError_ProxyCredentialsInvalid());
                 RCF_THROW(e);
             }
         }
@@ -385,20 +386,20 @@ namespace RCF {
         bool ok = false;
         for ( std::size_t i = 0; i < mHttpMessage.mHeaderList.size(); ++i )
         {
-            if ( iequals(proxyAuthHeader, mHttpMessage.mHeaderList[i].first) )
+            if ( boost::iequals(proxyAuthHeader, mHttpMessage.mHeaderList[i].first) )
             {
                 std::string& authValue = mHttpMessage.mHeaderList[i].second;
-                if ( istartsWith(authValue, "NTLM ") )
+                if ( boost::istarts_with(authValue, "NTLM ") )
                 {
                     std::string base64Auth = authValue.substr(5);
-                    trim(base64Auth);
-                    std::string authPacketIn = base64_decode(base64Auth);
+                    boost::trim(base64Auth);
+                    std::string authPacket = base64_decode(base64Auth);
 
                     RCF_ASSERT(mNtlmWrapper.get());
-                    mNtlmWrapper->onPacketReceived(authPacketIn);
-                    std::string authPacketOut = mNtlmWrapper->getPacketToSend();
+                    mNtlmWrapper->onPacketReceived(authPacket);
+                    std::string authValue = mNtlmWrapper->getPacketToSend();
 
-                    base64Auth = base64_encode((const unsigned char *)authPacketOut.c_str(), (unsigned int)authPacketOut.size());
+                    base64Auth = base64_encode((const unsigned char *)authValue.c_str(), (unsigned int) authValue.size());
 
                     MemOstream os;
                     os
@@ -432,25 +433,25 @@ namespace RCF {
 
         for ( std::size_t i = 0; i < mHttpMessage.mHeaderList.size(); ++i )
         {
-            if ( iequals(proxyAuthHeader, mHttpMessage.mHeaderList[i].first) )
+            if ( boost::iequals(proxyAuthHeader, mHttpMessage.mHeaderList[i].first) )
             {
                 AuthType authType = HttpConnectFilter::AuthType_None;
                 std::string realmValue;
 
                 const std::string& headerValue = mHttpMessage.mHeaderList[i].second;
-                if ( istartsWith(headerValue, "Basic") )
+                if ( boost::istarts_with(headerValue, "Basic") )
                 {
                     authType = HttpConnectFilter::AuthType_Basic;
                 }
-                else if ( istartsWith(headerValue, "NTLM") )
+                else if ( boost::istarts_with(headerValue, "NTLM") )
                 {
                     authType = HttpConnectFilter::AuthType_Ntlm;
                 }
-                else if ( istartsWith(headerValue, "Negotiate") )
+                else if ( boost::istarts_with(headerValue, "Negotiate") )
                 {
                     authType = HttpConnectFilter::AuthType_Negotiate;
                 }
-                else if ( istartsWith(headerValue, "Digest") )
+                else if ( boost::istarts_with(headerValue, "Digest") )
                 {
                     authType = HttpConnectFilter::AuthType_Digest;
                 }
@@ -499,7 +500,7 @@ namespace RCF {
                 // Don't have a complete message yet. Read some more.
                 if ( mReadPos == mReadVector.size() )
                 {
-                    RCF_THROW(Exception(RcfError_InvalidHttpMessage));
+                    RCF_THROW(Exception(_RcfError_InvalidHttpMessage()));
                 }
                 ByteBuffer buffer(&mReadVector[mReadPos], mReadVector.size() - mReadPos);
                 mpPostFilter->read(buffer, buffer.getLength());

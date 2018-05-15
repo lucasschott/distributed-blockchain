@@ -8,7 +8,7 @@ vpath client bin/
 
 
 CC = g++ 
-CFLAGS = -g -pthread -ldl -luuid
+CFLAGS = -g -pthread -ldl -luuid -w
 O_REP = obj/
 B_REP = bin/
 L_REP = lib/
@@ -20,7 +20,7 @@ PROG_C = participant
 all: $(PROG_C) $(PROG_S) 
 
 $(PROG_S): server.o distributed_server.o addr_and_hash.o affichage.o transaction.o block.o blockchain.o sha256.o
-	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) RCF/src/RCF/RCF.cpp  -I RCF/include -o $(B_REP)$@
+	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) RCF/src/RCF/RCF.cpp  -I RCF/include -I boost -o $(B_REP)$@
 
 $(PROG_C): client.o affichage.o addr_and_hash.o
 	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) -o $(B_REP)$@
@@ -37,7 +37,7 @@ distributed_server.o: distributed_server.cpp distributed_server.h
 RCF.o: ../RCF/src/RCF/RCF.cpp
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -o $(O_REP)$@
+	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -I boost -o $(O_REP)$@
 
 clean:
 	rm -f obj/*.o bin/bloc bin/participant

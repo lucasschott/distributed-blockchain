@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -20,13 +20,13 @@
 
 #include <RCF/Exception.hpp>
 
-#ifndef RCF_WINDOWS
+#ifndef BOOST_WINDOWS
 #include <dlfcn.h>
 #endif
 
 namespace RCF {
 
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
 
     DynamicLib::DynamicLib(const std::string & dllName) : 
         mDllName(dllName),
@@ -36,7 +36,7 @@ namespace RCF {
         if (mhDll == NULL)
         {
             DWORD dwErr = GetLastError();
-            Exception e(RcfError_DllLoad, dllName, osError(dwErr));
+            Exception e(_RcfError_DllLoad(dllName), dwErr);
             throw e;
         }
     }
@@ -60,7 +60,7 @@ namespace RCF {
         if (mhDll == NULL)
         {
             std::string strErr = dlerror();
-            Exception e(RcfError_UnixDllLoad, dllName, strErr);
+            Exception e(_RcfError_UnixDllLoad(dllName, strErr));
             throw e;
         }
     }

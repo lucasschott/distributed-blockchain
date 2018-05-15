@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,22 +11,14 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
-#ifndef INCLUDE_SF_SHARED_PTR_STD_HPP
-#define INCLUDE_SF_SHARED_PTR_STD_HPP
+#ifndef INCLUDE_SF_SHARED_PTR_HPP
+#define INCLUDE_SF_SHARED_PTR_HPP
 
-#include <SF/SerializeSmartPtr.hpp>
+#include <SF/shared_ptr_boost.hpp>
 
-#include <memory>
-
-namespace SF {
-
-    SF_SERIALIZE_REFCOUNTED_SMARTPTR( std::shared_ptr );
-
-} // namespace SF
-
-#endif // ! INCLUDE_SF_SHARED_PTR_STD_HPP
+#endif // ! INCLUDE_SF_SHARED_PTR_HPP

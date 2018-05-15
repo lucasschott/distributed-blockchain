@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,22 +11,20 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <SF/vector.hpp>
 
-#include <cstdint>
+#include <boost/cstdint.hpp>
+#include <boost/mpl/assert.hpp>
 
 #include <RCF/Export.hpp>
-#include <RCF/MemStream.hpp>
 #include <SF/Stream.hpp>
-#include <RCF/Tools.hpp>
+#include <SF/Tools.hpp>
 #include <SF/bitset.hpp>
-
-#include <string.h> // memcpy
 
 namespace SF {
 
@@ -36,7 +34,7 @@ namespace SF {
     {
         if (ar.isRead())
         {
-            std::uint32_t count = 0;
+            boost::uint32_t count = 0;
             ar & count;
 
             if (count)
@@ -51,15 +49,16 @@ namespace SF {
                     // Size field is verified, so read everything in one go.
                     vec.resize(count);
 
-                    std::uint32_t bytesToRead = count * vec.sizeofElement();
+                    boost::uint32_t bytesToRead = count * vec.sizeofElement();
 
-                    std::uint32_t bytesActuallyRead = is.read( 
+                    boost::uint32_t bytesActuallyRead = is.read( 
                         vec.addressOfElement(0),
                         bytesToRead);
 
                     RCF_VERIFY(
                         bytesActuallyRead == bytesToRead,
-                        RCF::Exception(RCF::RcfError_SfReadFailure));
+                        RCF::Exception(RCF::_SfError_ReadFailure()))
+                        (bytesActuallyRead)(bytesToRead)(count);
 
                     // Byte ordering.
                     if (ar.getRuntimeVersion() >= 8)
@@ -73,23 +72,24 @@ namespace SF {
                 else
                 {
                     // Size field not verified, so read in chunks.
-                    std::uint32_t elementsRemaining = count;
+                    boost::uint32_t elementsRemaining = count;
                     
                     while (elementsRemaining)
                     {
-                        const std::uint32_t ElementsMax = 50*1024;
-                        std::uint32_t elementsRead = count - elementsRemaining;
-                        std::uint32_t elementsToRead = RCF_MIN(ElementsMax, elementsRemaining);
-                        std::uint32_t bytesToRead = elementsToRead*vec.sizeofElement();
+                        const boost::uint32_t ElementsMax = 50*1024;
+                        boost::uint32_t elementsRead = count - elementsRemaining;
+                        boost::uint32_t elementsToRead = RCF_MIN(ElementsMax, elementsRemaining);
+                        boost::uint32_t bytesToRead = elementsToRead*vec.sizeofElement();
                         vec.resize( vec.size() + elementsToRead);
 
-                        std::uint32_t bytesRead = is.read( 
+                        boost::uint32_t bytesRead = is.read( 
                             vec.addressOfElement(elementsRead), 
                             bytesToRead);
 
                         RCF_VERIFY(
                             bytesRead == bytesToRead,
-                            RCF::Exception(RCF::RcfError_SfReadFailure));
+                            RCF::Exception(RCF::_SfError_ReadFailure()))
+                            (bytesRead)(bytesToRead)(ElementsMax)(count);
 
                         elementsRemaining -= elementsToRead;
                     }
@@ -107,11 +107,11 @@ namespace SF {
         }
         else if (ar.isWrite())
         {
-            std::uint32_t count = static_cast<std::uint32_t>(vec.size());
+            boost::uint32_t count = static_cast<boost::uint32_t>(vec.size());
             ar & count;
             if (count)
             {
-                std::uint32_t totalBytesToWrite = count * vec.sizeofElement();
+                boost::uint32_t totalBytesToWrite = count * vec.sizeofElement();
 
                 if (RCF::machineOrderEqualsNetworkOrder())
                 {
@@ -126,17 +126,17 @@ namespace SF {
                 else
                 {
                     // Reordering needed, so we go through a temporary buffer.
-                    std::uint32_t elementsRemaining = count;
-                    const std::uint32_t BufferSize = 100*1024;
+                    boost::uint32_t elementsRemaining = count;
+                    const boost::uint32_t BufferSize = 100*1024;
 
-                    const std::uint32_t ElementsMax = BufferSize / vec.sizeofElement();
+                    const boost::uint32_t ElementsMax = BufferSize / vec.sizeofElement();
 
                     char Buffer[BufferSize];
                     while (elementsRemaining)
                     {
-                        std::uint32_t elementsWritten = count - elementsRemaining;
-                        std::uint32_t elementsToWrite = RCF_MIN(ElementsMax, elementsRemaining);
-                        std::uint32_t bytesToWrite = elementsToWrite*vec.sizeofElement();
+                        boost::uint32_t elementsWritten = count - elementsRemaining;
+                        boost::uint32_t elementsToWrite = RCF_MIN(ElementsMax, elementsRemaining);
+                        boost::uint32_t bytesToWrite = elementsToWrite*vec.sizeofElement();
                         
                         memcpy( (char *) &Buffer[0], vec.addressOfElement(elementsWritten), bytesToWrite);
                         RCF::machineToNetworkOrder( &Buffer[0], vec.sizeofElement(), elementsToWrite);

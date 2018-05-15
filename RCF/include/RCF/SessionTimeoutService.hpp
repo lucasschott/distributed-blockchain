@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -24,13 +24,13 @@
 #include <RCF/Export.hpp>
 #include <RCF/PeriodicTimer.hpp>
 #include <RCF/Service.hpp>
-//#include <RCF/Timer.hpp>
+#include <RCF/Timer.hpp>
 
 namespace RCF {
 
     class NetworkSession;
-    typedef std::shared_ptr<NetworkSession> NetworkSessionPtr;
-    typedef std::weak_ptr<NetworkSession> NetworkSessionWeakPtr;
+    typedef boost::shared_ptr<NetworkSession> NetworkSessionPtr;
+    typedef boost::weak_ptr<NetworkSession> NetworkSessionWeakPtr;
 
     class RCF_EXPORT SessionTimeoutService : public I_Service
     {
@@ -48,13 +48,13 @@ namespace RCF {
 
         std::vector<NetworkSessionWeakPtr>  mSessionsTemp;
 
-        std::uint32_t                 mSessionTimeoutMs;
-        std::uint32_t                 mReapingIntervalMs;
+        boost::uint32_t                 mSessionTimeoutMs;
+        boost::uint32_t                 mReapingIntervalMs;
         RcfServer *                     mpRcfServer;
         PeriodicTimer                   mPeriodicTimer;
     };
 
-    typedef std::shared_ptr<SessionTimeoutService> SessionTimeoutServicePtr;
+    typedef boost::shared_ptr<SessionTimeoutService> SessionTimeoutServicePtr;
 
 } // namespace RCF
 

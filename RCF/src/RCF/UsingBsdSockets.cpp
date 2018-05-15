@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,21 +11,21 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
 
 #include <string>
 
-#include <RCF/Config.hpp>
+#include <boost/config.hpp>
+
 #include <RCF/Exception.hpp>
 #include <RCF/InitDeinit.hpp>
-#include <RCF/MemStream.hpp>
 #include <RCF/Tools.hpp>
-#include <RCF/BsdSockets.hpp>
+#include <RCF/util/Platform/OS/BsdSockets.hpp>
 
-#ifdef RCF_WINDOWS
+#ifdef BOOST_WINDOWS
 
 namespace RCF {
 
@@ -35,7 +35,7 @@ namespace RCF {
         WSADATA wsaData;
         int ret = WSAStartup(wVersion, &wsaData);
         int err = Platform::OS::BsdSockets::GetLastError();
-        RCF_VERIFY(ret == 0, Exception(RcfError_Socket, "WSAStartup()", osError(err)));
+        RCF_VERIFY(ret == 0, Exception( _RcfError_Socket("WSAStartup()"), err, RcfSubsystem_Os) );
     }
 
     void deinitWinsock()

@@ -2,7 +2,7 @@
 // ip/basic_resolver.hpp
 // ~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,6 @@
 
 #include "RCF/external/asio/asio/detail/config.hpp"
 #include "RCF/external/asio/asio/basic_io_object.hpp"
-#include "RCF/external/asio/asio/detail/handler_type_requirements.hpp"
 #include "RCF/external/asio/asio/detail/throw_error.hpp"
 #include "RCF/external/asio/asio/error.hpp"
 #include "RCF/external/asio/asio/ip/basic_resolver_iterator.hpp"
@@ -99,7 +98,7 @@ public:
   {
     asio::error_code ec;
     iterator i = this->service.resolve(this->implementation, q, ec);
-    asio::detail::throw_error(ec, "resolve");
+    asio::detail::throw_error(ec);
     return i;
   }
 
@@ -152,18 +151,9 @@ public:
    * the handler.
    */
   template <typename ResolveHandler>
-  ASIO_INITFN_RESULT_TYPE(ResolveHandler,
-      void (asio::error_code, iterator))
-  async_resolve(const query& q,
-      ASIO_MOVE_ARG(ResolveHandler) handler)
+  void async_resolve(const query& q, ResolveHandler handler)
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a ResolveHandler.
-    ASIO_RESOLVE_HANDLER_CHECK(
-        ResolveHandler, handler, iterator) type_check;
-
-    return this->service.async_resolve(this->implementation, q,
-        ASIO_MOVE_CAST(ResolveHandler)(handler));
+    return this->service.async_resolve(this->implementation, q, handler);
   }
 
   /// Perform reverse resolution of an endpoint to a list of entries.
@@ -188,7 +178,7 @@ public:
   {
     asio::error_code ec;
     iterator i = this->service.resolve(this->implementation, e, ec);
-    asio::detail::throw_error(ec, "resolve");
+    asio::detail::throw_error(ec);
     return i;
   }
 
@@ -245,18 +235,9 @@ public:
    * the handler.
    */
   template <typename ResolveHandler>
-  ASIO_INITFN_RESULT_TYPE(ResolveHandler,
-      void (asio::error_code, iterator))
-  async_resolve(const endpoint_type& e,
-      ASIO_MOVE_ARG(ResolveHandler) handler)
+  void async_resolve(const endpoint_type& e, ResolveHandler handler)
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a ResolveHandler.
-    ASIO_RESOLVE_HANDLER_CHECK(
-        ResolveHandler, handler, iterator) type_check;
-
-    return this->service.async_resolve(this->implementation, e,
-        ASIO_MOVE_CAST(ResolveHandler)(handler));
+    return this->service.async_resolve(this->implementation, e, handler);
   }
 };
 

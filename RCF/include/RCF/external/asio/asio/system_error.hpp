@@ -2,7 +2,7 @@
 // system_error.hpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2011 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,26 +16,15 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "RCF/external/asio/asio/detail/config.hpp"
-
-#if defined(ASIO_HAS_STD_SYSTEM_ERROR)
-# include <system_error>
-#else // defined(ASIO_HAS_STD_SYSTEM_ERROR)
-# include <cerrno>
-# include <exception>
-# include <string>
-# include "RCF/external/asio/asio/error_code.hpp"
-# include "RCF/external/asio/asio/detail/scoped_ptr.hpp"
-#endif // defined(ASIO_HAS_STD_SYSTEM_ERROR)
+#include <boost/scoped_ptr.hpp>
+#include <cerrno>
+#include <exception>
+#include <string>
+#include "RCF/external/asio/asio/error_code.hpp"
 
 #include "RCF/external/asio/asio/detail/push_options.hpp"
 
 namespace asio {
-
-#if defined(ASIO_HAS_STD_SYSTEM_ERROR)
-
-typedef std::system_error system_error;
-
-#else // defined(ASIO_HAS_STD_SYSTEM_ERROR)
 
 /// The system_error class is used to represent system conditions that
 /// prevent the library from operating correctly.
@@ -44,15 +33,15 @@ class system_error
 {
 public:
   /// Construct with an error code.
-  system_error(const error_code& ec)
-    : code_(ec),
+  system_error(const error_code& code)
+    : code_(code),
       context_()
   {
   }
 
   /// Construct with an error code and context.
-  system_error(const error_code& ec, const std::string& context)
-    : code_(ec),
+  system_error(const error_code& code, const std::string& context)
+    : code_(code),
       context_(context)
   {
   }
@@ -83,11 +72,11 @@ public:
   /// Get a string representation of the exception.
   virtual const char* what() const throw ()
   {
-#if !defined(ASIO_NO_EXCEPTIONS)
+#if !defined(BOOST_NO_EXCEPTIONS)
     try
-#endif // !defined(ASIO_NO_EXCEPTIONS)
+#endif // !defined(BOOST_NO_EXCEPTIONS)
     {
-      if (!what_.get())
+      if (!what_)
       {
         std::string tmp(context_);
         if (tmp.length())
@@ -97,12 +86,12 @@ public:
       }
       return what_->c_str();
     }
-#if !defined(ASIO_NO_EXCEPTIONS)
+#if !defined(BOOST_NO_EXCEPTIONS)
     catch (std::exception&)
     {
       return "system_error";
     }
-#endif // !defined(ASIO_NO_EXCEPTIONS)
+#endif // !defined(BOOST_NO_EXCEPTIONS)
   }
 
   /// Get the error code associated with the exception.
@@ -119,10 +108,8 @@ private:
   std::string context_;
 
   // The string representation of the error.
-  mutable asio::detail::scoped_ptr<std::string> what_;
+  mutable boost::scoped_ptr<std::string> what_;
 };
-
-#endif // defined(ASIO_HAS_STD_SYSTEM_ERROR)
 
 } // namespace asio
 

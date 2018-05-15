@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -21,13 +21,14 @@
 
 #include <memory>
 #include <string>
-#include <functional>
+
+#include <boost/function.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <RCF/Certificate.hpp>
-#include <RCF/Enums.hpp>
 #include <RCF/Filter.hpp>
 #include <RCF/Export.hpp>
-#include <RCF/Tools.hpp>
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
@@ -45,7 +46,9 @@ namespace RCF {
     class OpenSslEncryptionFilter;
     class OpenSslEncryptionFilterImpl;
 
-    /// Use this class to load a certificate from .pem format. Only applicable to OpenSSL.
+    typedef boost::function1<bool, Certificate *> CertificateValidationCb;
+
+    /// Use this class to load a certificate in .pem format. Only applicable to OpenSSL.
     class RCF_EXPORT PemCertificate : public Certificate
     {
     public:
@@ -99,11 +102,11 @@ namespace RCF {
         X509 *                          mpX509;
     };
 
-    typedef std::shared_ptr<X509Certificate> X509CertificatePtr;
+    typedef boost::shared_ptr<X509Certificate> X509CertificatePtr;
 
     class ClientStub;
 
-    class RCF_EXPORT OpenSslEncryptionFilter : public Filter, Noncopyable
+    class RCF_EXPORT OpenSslEncryptionFilter : public Filter, boost::noncopyable
     {
     public:
         int                         getFilterId() const;
@@ -120,7 +123,7 @@ namespace RCF {
             const std::string &     certificateFilePassword,
             const std::string &     caCertificate,
             const std::string &     ciphers,
-            CertificateValidationCallback verifyFunctor,
+            CertificateValidationCb verifyFunctor,
             SslRole                 sslRole = SslClient,
             unsigned int            bioBufferSize = 2048);
 
@@ -137,7 +140,7 @@ namespace RCF {
 
     private:
         friend class OpenSslEncryptionFilterImpl;
-        std::shared_ptr<OpenSslEncryptionFilterImpl> mImplPtr;
+        boost::shared_ptr<OpenSslEncryptionFilterImpl> mImplPtr;
     };
     
     class OpenSslEncryptionFilterFactory : public FilterFactory

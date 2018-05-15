@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -20,8 +20,6 @@
 
 #include <SF/Archive.hpp>
 #include <SF/vector.hpp>
-#include <RCF/MemStream.hpp>
-#include <RCF/Tools.hpp>
 
 namespace SF {
 
@@ -29,19 +27,19 @@ namespace SF {
     {
         if (ar.isWrite())
         {
-            std::uint32_t bitCount = static_cast<std::uint32_t>(bits.size());
-            std::uint32_t charCount = (bitCount+7)/8;
+            boost::uint32_t bitCount = static_cast<boost::uint32_t>(bits.size());
+            boost::uint32_t charCount = (bitCount+7)/8;
             std::vector<char> buffer;
             buffer.reserve(charCount);
-            for (std::uint32_t i=0; i<charCount; ++i)
+            for (boost::uint32_t i=0; i<charCount; ++i)
             {
                 char ch = 0;
 
-                std::uint32_t bitsForThisChar = RCF_MIN( 
-                    std::uint32_t(8), 
-                    std::uint32_t(bitCount - 8*i));
+                boost::uint32_t bitsForThisChar = RCF_MIN( 
+                    boost::uint32_t(8), 
+                    boost::uint32_t(bitCount - 8*i));
 
-                for (std::uint32_t j=0; j<bitsForThisChar; ++j)
+                for (boost::uint32_t j=0; j<bitsForThisChar; ++j)
                 {
                     bool bit = bits.getBit(8*i + j);
                     ch = ch | static_cast<char>( bit << j );
@@ -53,7 +51,7 @@ namespace SF {
         }
         else if (ar.isRead())
         {
-            std::uint32_t bitCount = 0;
+            boost::uint32_t bitCount = 0;
             std::vector<char> buffer;
             ar & bitCount & buffer;
 
@@ -64,7 +62,9 @@ namespace SF {
 
             if (!ok)
             {
-                RCF_THROW( RCF::Exception( RCF::RcfError_DeserializeVectorBool, bitCount, buffer.size()));
+                RCF_THROW( RCF::_RcfError_DeserializeVectorBool(
+                    bitCount, 
+                    static_cast<boost::uint32_t>(buffer.size())));
             }
 
             bits.resize(bitCount);
@@ -72,11 +72,11 @@ namespace SF {
             {
                 char ch = buffer[i];
 
-                std::uint32_t bitsForThisChar = RCF_MIN(
-                    std::uint32_t(8), 
-                    std::uint32_t(bitCount - 8*i));
+                boost::uint32_t bitsForThisChar = RCF_MIN(
+                    boost::uint32_t(8), 
+                    boost::uint32_t(bitCount - 8*i));
 
-                for (std::uint32_t j=0; j<bitsForThisChar; ++j)
+                for (boost::uint32_t j=0; j<bitsForThisChar; ++j)
                 {
                     bool bit = ch & (1<<j) ? true : false;
                     bits.setBit(8*i + j, bit);

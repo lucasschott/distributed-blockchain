@@ -2,7 +2,7 @@
 //******************************************************************************
 // RCF - Remote Call Framework
 //
-// Copyright (c) 2005 - 2018, Delta V Software. All rights reserved.
+// Copyright (c) 2005 - 2013, Delta V Software. All rights reserved.
 // http://www.deltavsoft.com
 //
 // RCF is distributed under dual licenses - closed source or GPL.
@@ -11,7 +11,7 @@
 // If you have not purchased a commercial license, you are using RCF 
 // under GPL terms.
 //
-// Version: 3.0
+// Version: 2.0
 // Contact: support <at> deltavsoft.com 
 //
 //******************************************************************************
@@ -23,9 +23,8 @@
 #include <RCF/RcfSession.hpp>
 #include <RCF/ThreadLocalData.hpp>
 #include <RCF/Tools.hpp>
-#include <RCF/Log.hpp>
 
-#include <RCF/BsdSockets.hpp>
+#include <RCF/util/Platform/OS/BsdSockets.hpp>
 
 namespace RCF {
 
@@ -74,11 +73,6 @@ namespace RCF {
     {
         return mIpAddress.getPort();
     }
-
-#ifdef _MSC_VER
-#pragma warning( push )
-#pragma warning( disable : 4996 )  // warning C4996: 'ctime' was declared deprecated
-#endif
 
     void UdpServerTransport::open()
     {
@@ -149,10 +143,10 @@ namespace RCF {
             if (ret < 0)
             {
                 err = Platform::OS::BsdSockets::GetLastError();
-                Exception e(RcfError_Socket, "bind()", osError(err));
-                RCF_THROW(e);
+                Exception e(_RcfError_Socket("bind()"), err, RcfSubsystem_Os);
+                RCF_THROW(e)(mFd)(mIpAddress.string())(ret);
             }
-            RCF_ASSERT( mFd != -1 );
+            RCF_ASSERT_NEQ( mFd , -1 );
 
             if (!mMulticastIpAddress.empty())
             {
@@ -193,7 +187,11 @@ namespace RCF {
 
                     RCF_VERIFY(
                         ret == 0,
-                        Exception(RcfError_Socket, "setsockopt() with IPPROTO_IP/IP_ADD_MEMBERSHIP", osError(err)));
+                        Exception(
+                            _RcfError_Socket("setsockopt() with IPPROTO_IP/IP_ADD_MEMBERSHIP"),
+                            err,
+                            RcfSubsystem_Os))
+                            (mMulticastIpAddress.string())(mIpAddress.string());
                 }
 #if RCF_FEATURE_IPV6==1
                 else if ( mIpAddress.getType() == IpAddress::V6 )
@@ -222,7 +220,11 @@ namespace RCF {
 
                     RCF_VERIFY(
                         ret == 0,
-                        Exception(RcfError_Socket, "setsockopt() with IPPROTO_IPV6/IP_ADD_MEMBERSHIP", osError(err)));
+                        Exception(
+                            _RcfError_Socket("setsockopt() with IPPROTO_IPV6/IP_ADD_MEMBERSHIP"),
+                            err,
+                            RcfSubsystem_Os))
+                            (mMulticastIpAddress.string())(mIpAddress.string());
                 }
 #endif
                 // TODO: enable source-filtered multicast messages
@@ -249,10 +251,6 @@ namespace RCF {
         }
     }
 
-#ifdef _MSC_VER
-#pragma warning( pop )
-#endif
-
     void UdpServerTransport::close()
     {
         if (mFd != -1)
@@ -261,7 +259,9 @@ namespace RCF {
             int err = Platform::OS::BsdSockets::GetLastError();
             RCF_VERIFY(
                 ret == 0,
-                Exception(RcfError_SocketClose, osError(err)));
+                Exception(
+                    _RcfError_SocketClose(), err, RcfSubsystem_Os,
+                    "closesocket() failed"))(mFd);
             mFd = -1;
         }
     }
@@ -275,7 +275,10 @@ namespace RCF {
             len == 1 ||
             (len == -1 && err == Platform::OS::BsdSockets::ERR_EMSGSIZE) ||
             (len == -1 && err == Platform::OS::BsdSockets::ERR_ECONNRESET),
-            Exception(RcfError_Socket, "recvfrom()", osError(err)));
+            Exception(
+                _RcfError_Socket("recvfrom()"),
+                err,
+                RcfSubsystem_Os));
     }
 
     void UdpServerTransport::cycle(int timeoutMs)
@@ -324,8 +327,12 @@ namespace RCF {
         }
         else if (ret == -1)
         {
-            Exception e(RcfError_Socket, "select()", osError(err));
-            RCF_THROW(e);
+            Exception e(
+                _RcfError_Socket("select()"),
+                err,
+                RcfSubsystem_Os);
+
+            RCF_THROW(e)(mFd)(mIpAddress.string())(err);
         }
 
     }
@@ -368,8 +375,8 @@ namespace RCF {
         if (len != static_cast<int>(writeBuffer.size()))
         {
             int err = Platform::OS::BsdSockets::GetLastError();
-            Exception e(RcfError_Socket, "sendto()", osError(err));
-            RCF_THROW(e);
+            Exception e(_RcfError_Socket("sendto()"), err, RcfSubsystem_Os);
+            RCF_THROW(e)(mTransport.mFd)(len)(writeBuffer.size());
         }
 
         NetworkSessionPtr networkSessionPtr = getTlsUdpNetworkSessionPtr();
@@ -392,11 +399,9 @@ namespace RCF {
 
         mTaskEntries.clear();
 
-        using std::placeholders::_1;
-
         mTaskEntries.push_back(
             TaskEntry(
-                std::bind(
+                boost::bind(
                     &UdpServerTransport::cycleTransportAndServer,
                     this,
                     _1),
@@ -476,16 +481,16 @@ namespace RCF {
                 memcpy(&dataLength, &buffer[0], 4);
                 networkToMachineOrder(&dataLength, 4, 1);
 
-                if ( getMaxIncomingMessageLength() && dataLength > getMaxIncomingMessageLength() )
+                if (getMaxMessageLength() && dataLength > getMaxMessageLength())
                 {
                     // Message too long - send an error message back.
 
                     ByteBuffer byteBuffer;
-                    encodeServerError(getSessionManager(), byteBuffer, RcfError_ServerMessageLength_Id);
+                    encodeServerError(getSessionManager(), byteBuffer, RcfError_ServerMessageLength);
                     byteBuffer.expandIntoLeftMargin(4);
 
-                    *(std::uint32_t *) (byteBuffer.getPtr()) =
-                        static_cast<std::uint32_t>(byteBuffer.getLength() - 4);
+                    *(boost::uint32_t *) (byteBuffer.getPtr()) =
+                        static_cast<boost::uint32_t>(byteBuffer.getLength() - 4);
 
                     RCF::machineToNetworkOrder(byteBuffer.getPtr(), 4, 1);
 

@@ -907,14 +907,18 @@ int main(int argc, char ** argv)
                     char * addr_c = in6_addr_to_char_addr(server_c->addr);
                     try
                     {
+                        cout << 1 << endl;
                         RCF::RcfInitDeinit rcfInit;
+                        cout << 2 << endl;
                         RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(addr_c,((int)server_c->port)+1));
+                        cout << 3 << endl;
                         client.sendBlockchain(RCF::Oneway,*blockchain);
+                        cout << 4 << endl;
                     }
                     catch ( const RCF::Exception & e )
                     {
-                        std::cout << "Error: " << e.getErrorString() << std::endl;
                         cout << addr_c << " " << server_c->port+1 <<endl;
+                        std::cout << "Error: " << e.getErrorString() << std::endl;
                     }
 
                 }

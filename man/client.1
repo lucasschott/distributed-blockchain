@@ -1,0 +1,37 @@
+.TH client 1  "16 decembre, 2017" "version 0.1" "USER COMMANDS"
+.SH NOM
+client \- permet d'envoyer et de demander des adresses associés a des hashs a
+une server
+.SH SYNOPSIS
+.B server
+[\-v] adr port put hash ip_associé
+.PP
+.B server
+[\-v] adr port get hash
+.SH DESCRIPTION
+Il faut donner au programme une adresse IPv6 (ou nom de domaine) et un port
+disponible sur l'hôte depuis lequel on lance le programme.
+.PP
+Le programme client permet d'envoyer a un server un hash associé a une adresse
+en utilisant la commande avec put. Ou de demander a un server de lui
+transmettre les adresses associés a un hash en utilisant la commande avec get.
+Les hash sont des entiers de 72 octets a représenter en hexadécimal.
+Les adresses sont au format IPv6.
+.SH OPTIONS
+.TP
+\-v
+afficher les résulats de manière plus verbeuse sur la sortie standard.
+.SH CODE DE RETOUR
+0 \- programme arrêté avec succes
+.PP
+1 \- programme arrêté avec une erreur
+.SH LIMITATIONS
+Le programme est uniquement compatible avec les adresses IPv6.
+.SH AUTEUR
+Lucas Schott (lucas.schott@etu.unistra.fr)
+.PP
+Juan Manuel Torres Garcia (juan-manuel.torres-garcia@etu.unistra.fr)
+.SH VOIR AUSSI
+server(1)
+.PP
+rapport complet et README disponible en annexe

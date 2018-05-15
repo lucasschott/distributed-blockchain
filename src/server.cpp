@@ -23,6 +23,12 @@ connected_server * server_table = NULL;
 
 string my_account;
 
+typedef struct client_noeud_t {
+    string client;
+    int qualite;
+} client_noeud_t;
+
+vector<client_noeud_t> client_noeud;
 
 /**
  * \brief les variables globales d'un server:
@@ -45,13 +51,19 @@ sem_t sem_server;
 class NoeudBloc
 {
     public:
+
+        NoeudBloc()
+        {
+        }
         void sendBlockchain(Blockchain blockchain_a)
         {
             Blockchain * newChain = blockchain_a.copyConstructor();
-            if(newChain->isChainValid() && blockchain->chain.size()<newChain->chain.size())
+            VERB(cout << "reception blockchain" << endl);
+            if(newChain->isChainValid() && blockchain->chain.size()<=newChain->chain.size())
             {
                 delete(blockchain);
                 blockchain = newChain;
+                VERB(cout << "la blockchain est valide" << endl);
             }
         }
 
@@ -60,10 +72,13 @@ class NoeudBloc
             Block * newBlock = block_a.copyConstructor();
             Blockchain * newChain = blockchain->copyConstructor();
             newChain->chain.push_back(newBlock);
-            if(newChain->isChainValid() && blockchain->chain.size()<newChain->chain.size())
+
+            VERB(cout << "reception block" << endl);
+            if(newChain->isChainValid() && blockchain->chain.size()<=newChain->chain.size())
             {
                 delete(blockchain);
                 blockchain = newChain;
+                VERB(cout << "la blockchain est valide" << endl);
             }
         }
 };
@@ -288,6 +303,7 @@ struct addrinfo * get_address_info(char * addr,char * port)
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET6;
     hints.ai_socktype = SOCK_DGRAM;
+
 
     //obtenir les info a partir de son addres (ou nom de domaine) et du port
     if ((status = getaddrinfo(addr, port,&hints, &host)) != 0)
@@ -515,16 +531,9 @@ void * threadMine(void __attribute__((unused)) * arg)
             send_to_server(client_addr,client_port,
                     (msg_t*) &msg,sizeof(share_block_t));
 
-            //envoi de chaque transactions du block
-            for(Transaction * trans : blockchain->chain.back()->transactions)
-            {
-                VERB(printf("envoi transaction\n"));
-                strncpy(msg_trans.from_addr,trans->fromAddress.c_str(),PSEUDO_SIZE);
-                strncpy(msg_trans.from_addr,trans->toAddress.c_str(),PSEUDO_SIZE);
-                msg_trans.amount=trans->amount;
-                send_to_server(client_addr,client_port,
-                        (msg_t*) &msg_trans,sizeof(transaction_t));
-            }
+            RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(in6_addr_to_char_addr(client_addr),((int)client_port)+1));
+            VERB(cout << "envoi block  a : " << in6_addr_to_char_addr(client_addr) << " " << client_port+1 <<endl);
+            client.sendBlock(*(blockchain->chain.back()));
             server = server->next;
         }
     }
@@ -539,6 +548,7 @@ void * threadMine(void __attribute__((unused)) * arg)
 //autres servers connectés
 void * fthread(void __attribute__((unused)) * arg)
 {
+    int i;
     //iitialisation des signaux pour le thread
     init_thread_signal();
 
@@ -583,7 +593,13 @@ void * fthread(void __attribute__((unused)) * arg)
         server_table=suppression_dead_server(server_table);
         PRIM(sem_post(&sem_server),"sem_post(sem_server)");
 
-        sleep(10);
+        for(i=0;i<client_noeud.size();i++)
+        {
+            if(client_noeud.at(i).qualite>0)
+                client_noeud.at(i).qualite--;
+        }
+
+        sleep(2);
     }
 
     VERB(printf("fin thread boucle\n"));
@@ -718,7 +734,7 @@ int main(int argc, char ** argv)
 
     msg_t * msg_rcvd = NULL;
 
-    blockchain = new Blockchain(2,50);
+    blockchain = new Blockchain(4,50);
 
     char * char_addr = in6_addr_to_char_addr(my_addr);
     VERB(printf("mon addresse est : %s\n", char_addr));
@@ -728,25 +744,16 @@ int main(int argc, char ** argv)
     PRIM(sem_init(&sem_server,1,1),"sem_init(sem_server)");
     PRIM(sem_init(&sem_blockchain,1,1),"sem_init(sem_blockchain)");
 
-
-    try
-    {
-        // Initialize RCF.
-        RCF::RcfInitDeinit rcfInit;
-        // Instantiate a RCF server.
-        RCF::RcfServer server(RCF::TcpEndpoint(char_addr, my_port+1));
-        // Bind the I_PrintService interface.
-        NoeudBloc noeudBloc;
-        server.bind<I_NoeudBloc>(noeudBloc);
-        // Start the server.
-        server.start();
-        cout << char_addr << " " << my_port+1 << endl;
-    }
-    catch ( const RCF::Exception & e )
-    {
-        std::cout << "Error: " << e.getErrorString() << std::endl;
-    }
-
+    // Initialize RCF.
+    RCF::RcfInitDeinit rcfInit;
+    NoeudBloc * noeudBloc = new NoeudBloc();
+    // Instantiate a RCF server.
+    RCF::RcfServer server(RCF::TcpEndpoint(char_addr, my_port+1));
+    // Bind the I_PrintService interface.
+    server.bind<I_NoeudBloc>(*noeudBloc);
+    // Start the server.
+    server.start();
+    VERB(cout << "connexion : " << char_addr << " " << my_port+1 << endl);
 
 
     //s'il y a 6 arguments c'est que l'on souhaite que le server se connecte
@@ -823,7 +830,40 @@ int main(int argc, char ** argv)
         //si le message recu est un message put 
         if(msg_rcvd->header==TRANSACTION_HEADER)
         {
+            int i;
             transaction_t * get_rcvd = (transaction_t *) msg_rcvd;
+            bool existe = false;
+
+            for(i=0;i<client_noeud.size();i++)
+            {
+                if(client_noeud.at(i).client.compare(get_rcvd->from_addr)==0)
+                {
+                    existe = true;
+                    if(client_noeud.at(i).qualite>=5)
+                    {
+                        VERB(cout << "client fidèle : " << get_rcvd->from_addr << " récompensé de " << get_rcvd->amount/10 << " points blockchain" << endl);
+                        blockchain->createTransaction(
+                                new Transaction(
+                                    nullptr,get_rcvd->from_addr,get_rcvd->amount/10)
+                                );
+                    }
+                    break;
+                }
+            }
+            if(existe)
+            {
+                VERB(cout << "augmentation de la qualite du client : " << get_rcvd->from_addr << endl);
+                client_noeud.at(i).qualite++;
+            }
+            else
+            {
+                VERB(cout << "ajout du client : " << get_rcvd->from_addr << endl);
+                client_noeud_t newClient;
+                newClient.client = get_rcvd->from_addr;
+                newClient.qualite = 0;
+                client_noeud.push_back(newClient);
+            }
+
             VERB(printf("reception transaction de %s à %s, montant %lf\n",
                         get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount));
             //ajouter la transaction a la liste d'attente de la blockchain
@@ -832,7 +872,7 @@ int main(int argc, char ** argv)
                         get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount
                         )
                     );
-            if(blockchain->pendingTransactions.size()>=10)
+            if(blockchain->pendingTransactions.size()>=5)
             {
                 //thread mine pending transactions
                 mine = (pthread_t*) malloc(sizeof(pthread_t));
@@ -905,22 +945,10 @@ int main(int argc, char ** argv)
                     connected_server * server_c = get_server(connect_rcvd->addr,connect_rcvd->port,server_table);
 
                     char * addr_c = in6_addr_to_char_addr(server_c->addr);
-                    try
-                    {
-                        cout << 1 << endl;
-                        RCF::RcfInitDeinit rcfInit;
-                        cout << 2 << endl;
-                        RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(addr_c,((int)server_c->port)+1));
-                        cout << 3 << endl;
-                        client.sendBlockchain(RCF::Oneway,*blockchain);
-                        cout << 4 << endl;
-                    }
-                    catch ( const RCF::Exception & e )
-                    {
-                        cout << addr_c << " " << server_c->port+1 <<endl;
-                        std::cout << "Error: " << e.getErrorString() << std::endl;
-                    }
 
+                    RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(addr_c,((int)server_c->port)+1));
+                    VERB(cout << "envoi blockchain  a : " << addr_c << " " << server_c->port+1 <<endl);
+                    client.sendBlockchain(*blockchain);
                 }
                 else
                 {
@@ -982,7 +1010,12 @@ int main(int argc, char ** argv)
         }
         else if(msg_rcvd->header==ASK_BLOCKCHAIN_HEADER)
         {
-            //TODO
+            ask_blockchain_t * ask_rcvd = (ask_blockchain_t *) msg_rcvd;
+
+            RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(in6_addr_to_char_addr(ask_rcvd->addr),((int)ask_rcvd->port)+1));
+            VERB(cout << "envoi blockchain  a : " << in6_addr_to_char_addr(ask_rcvd->addr) << " " << ask_rcvd->port+1 <<endl);
+            client.sendBlockchain(*blockchain);
+
         }
         else if(msg_rcvd->header==EMPTY_HEADER)
         {

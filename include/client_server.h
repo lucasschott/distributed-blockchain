@@ -64,7 +64,7 @@ using namespace std;
 //strucure d'un message contenant juste le header
 typedef struct msg_t{
     uint16_t header;
-}msg_t, ask_blockchain_t,share_blockchain_t;
+}msg_t,share_blockchain_t;
 
 //structure d'un message contenant une addresse source une addresse destination
 //et un montant

@@ -151,7 +151,7 @@ connected_server * suppression_dead_server(connected_server * server_table)
         tmp = server->next;
         if( (memcmp(&server->addr,&my_addr,sizeof(struct in6_addr))==0
                 && server->port==my_port)
-                || sysdate-server->last_keep_alive>30)
+                || sysdate-server->last_keep_alive>3)
         {
             server_table =
                 suppression_server(server_table,server->addr,server->port);

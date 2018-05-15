@@ -59,7 +59,7 @@ typedef struct syn_t{
     uint16_t header;
     struct in6_addr addr;
     in_port_t port;
-}share_server_t, connect_t, keep_t;
+}share_server_t, connect_t, keep_t, ask_blockchain_t;
 
 typedef struct block_t{
     uint16_t header;

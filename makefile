@@ -8,7 +8,7 @@ vpath client bin/
 
 
 CC = g++ 
-CFLAGS = -g -pthread -ldl -w
+CFLAGS = -g -pthread -ldl -w -std=c++11
 O_REP = obj/
 B_REP = bin/
 L_REP = lib/

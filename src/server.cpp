@@ -8,6 +8,10 @@
 //variable err pour tester le retour des fonctions fthread
 int err;
 
+int nb_thread=0;
+
+mine_arg_t arg_mine[100];
+
 //variable end_signal modifié lors de la reception du signal SIGINT
 volatile bool end_signal = false;
 
@@ -49,6 +53,7 @@ in_port_t my_port;
  */
 sem_t sem_blockchain;
 sem_t sem_server;
+sem_t sem_mining;
 
 void send_to_server(struct in6_addr server_addr,
         in_port_t server_port,msg_t * msg, int msg_len);
@@ -68,6 +73,21 @@ class NoeudBloc
             VERB(cout << "reception blockchain" << endl);
             if(newChain->isChainValid() && blockchain->chain.size()<=newChain->chain.size())
             {
+                int i=0;
+                while(i<blockchain->chain.size() && blockchain->chain.at(i)->hash.compare(newChain->chain.at(i)->hash)==0)
+                {
+                    i++;
+                }
+                if(i<blockchain->chain.size())
+                {
+                    for(i;i<blockchain->chain.size();i++)
+                    {
+                        for(Transaction * trans : blockchain->chain.at(i)->transactions)
+                        {
+                            newChain->createTransaction(new Transaction(trans->fromAddress,trans->toAddress,trans->amount));
+                        }
+                    }
+                }
                 delete(blockchain);
                 blockchain = newChain;
                 VERB(cout << "la blockchain est valide" << endl);
@@ -80,6 +100,7 @@ class NoeudBloc
 
         void sendBlock(Block block_a)
         {
+            int i;
             Block * newBlock = block_a.copyConstructor();
             Blockchain * newChain = blockchain->copyConstructor();
             newChain->chain.push_back(newBlock);
@@ -105,7 +126,6 @@ class NoeudBloc
                     msg_ask.port = my_port;
                     send_to_server(server_table->addr,server_table->port,
                             (msg_t*) &msg_ask,sizeof(ask_blockchain_t));
-
                 }
             }
         }
@@ -295,8 +315,6 @@ int responde_to(struct sockaddr_storage * client_sockaddr,
     {size=sizeof(connect_t);}
     else if(msg_snd->header==KEEP_HEADER)
     {size=sizeof(keep_t);}
-    else if(msg_snd->header==SHARE_BLOCK_HEADER)
-    {size=sizeof(share_block_t);}
     else if(msg_snd->header==SHARE_SERVER_HEADER)
     {size=sizeof(share_server_t);}
     else if(msg_snd->header==ASK_BLOCKCHAIN_HEADER)
@@ -437,63 +455,6 @@ void answer_to_client(ask_balance_t get_rcvd,
 }
 
 
-/**
- * \fn void answer_to_server(get_t get_rcvd,
- * struct sockaddr_storage * client_sockaddr,
- * socklen_t * client_addrlen)
- * \brief repondre a un sever quand celui-ci demande de lui envoyer les
- * adresses associés a un hash, lui envoyer les addresses correspondante
- */
-void answer_to_server(
-        struct sockaddr_storage * client_sockaddr,
-        socklen_t * client_addrlen)
-{
-    share_block_t * block_snd = (share_block_t*) malloc(sizeof(share_block_t));
-    transaction_t * transaction_snd = (transaction_t*) malloc(sizeof(transaction_t));
-    share_blockchain_t * blockchain_snd = (share_blockchain_t*) malloc(sizeof(share_blockchain_t));
-
-    transaction_snd->header = TRANSACTION_HEADER;
-    block_snd->header = SHARE_BLOCK_HEADER;
-    blockchain_snd->header = SHARE_BLOCKCHAIN_HEADER;
-
-
-    //send blocks
-    for(Block * block : blockchain->chain)
-    {
-        responde_to(client_sockaddr,client_addrlen,
-                (msg_t*) blockchain_snd);
-
-        strcpy(block_snd->previous_hash,block->previousHash.c_str());
-        block_snd->timestamp=block->timestamp;
-        block_snd->nonce=block->nonce;
-
-        fflush(NULL);
-        VERB(printf("envoi\n"));
-        fflush(NULL);
-        responde_to(client_sockaddr,client_addrlen,
-                (msg_t*) block_snd);
-
-        //send transations
-        for(Transaction * trans : block->transactions)
-        {
-            strcpy(transaction_snd->from_addr,trans->fromAddress.c_str());
-            strcpy(transaction_snd->to_addr,trans->toAddress.c_str());
-            transaction_snd->amount = trans->amount;
-            
-            fflush(NULL);
-            VERB(printf("envoi\n"));
-            fflush(NULL);
-            responde_to(client_sockaddr,client_addrlen,
-                    (msg_t*) transaction_snd);
-        }
-    }
-
-    free(block_snd);
-    free(transaction_snd);
-}
-
-
-
 
 /**
  * \fn void share_all_servers(int my_sockfd,struct in6_addr addr,
@@ -520,52 +481,59 @@ void share_all_servers(struct in6_addr addr, in_port_t port)
     }
 }
 
-void * threadMine(void __attribute__((unused)) * arg)
+void * threadMine(void * arg)
 {
-    Blockchain * newBlockchain = blockchain->copyConstructor();
-    VERB(printf("minage d'un nouveau bloc\n"));
-    newBlockchain->minePendingTransactions(my_account);
-
+    mine_arg_t * args = (mine_arg_t*) arg;
+    PRIM(sem_wait(&sem_mining),"sem_wait(sem_mining)");
     PRIM(sem_wait(&sem_blockchain),"sem_wait(sem_blockchain)");
-    if(newBlockchain->isChainValid() &&
-            (blockchain->chain.size()<newBlockchain->chain.size() 
-             || (blockchain->chain.size()==newBlockchain->chain.size()
-                 && blockchain->chain.back()->transactions.size()
-                 < newBlockchain->chain.back()->transactions.size())))
+
+    cout << "create transaction: from " << args->from_addr << " to " << args->to_addr << " amout " << args->amount << endl;
+    //ajouter la transaction a la liste d'attente de la blockchain
+    blockchain->createTransaction(
+            new Transaction(
+                args->from_addr,args->to_addr,args->amount
+                )
+            );
+
+    if(blockchain->pendingTransactions.size()>=5)
     {
-        VERB(printf("nouveau bloc valide\n"));
-        delete(blockchain);
-        blockchain = newBlockchain;
 
-        //envoie du block au autres servers
-        share_block_t msg;
-        msg.header = SHARE_BLOCK_HEADER;
-        strncpy(msg.previous_hash,blockchain->chain.back()->previousHash.c_str(),BLOCK_HASH_SIZE);
-        msg.timestamp = blockchain->chain.back()->timestamp;
-        msg.nonce = blockchain->chain.back()->nonce;
 
-        transaction_t msg_trans;
-        msg_trans.header = SHARE_TRANSACTION_HEADER;
+        Blockchain * newBlockchain = blockchain->copyConstructor();
+        VERB(printf("minage d'un nouveau bloc\n"));
+        newBlockchain->minePendingTransactions(my_account);
 
-        connected_server * server = server_table;
-        struct in6_addr client_addr;
-        in_port_t client_port;
-
-        while(server!=NULL && !disp_blockchain)
+        if(newBlockchain->isChainValid() &&
+                (blockchain->chain.size()<newBlockchain->chain.size() 
+                 || (blockchain->chain.size()==newBlockchain->chain.size()
+                     && blockchain->chain.back()->transactions.size()
+                     < newBlockchain->chain.back()->transactions.size())))
         {
-            VERB(printf("envoi block\n"));
-            client_addr = server->addr;
-            client_port = server->port;
-            send_to_server(client_addr,client_port,
-                    (msg_t*) &msg,sizeof(share_block_t));
+            VERB(printf("nouveau bloc valide\n"));
+            delete(blockchain);
+            blockchain = newBlockchain;
 
-            RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(in6_addr_to_char_addr(client_addr),((int)client_port)+1));
-            VERB(cout << "envoi block  a : " << in6_addr_to_char_addr(client_addr) << " " << client_port+1 <<endl);
-            client.sendBlock(*(blockchain->chain.back()));
-            server = server->next;
+            //envoie du block au autres servers
+
+            connected_server * server = server_table;
+            struct in6_addr client_addr;
+            in_port_t client_port;
+
+            while(server!=NULL && !disp_blockchain)
+            {
+                VERB(printf("envoi block\n"));
+                client_addr = server->addr;
+                client_port = server->port;
+
+                RcfClient<I_NoeudBloc> client(RCF::TcpEndpoint(in6_addr_to_char_addr(client_addr),((int)client_port)+1));
+                VERB(cout << "envoi block  a : " << in6_addr_to_char_addr(client_addr) << " " << client_port+1 <<endl);
+                client.sendBlock(*(blockchain->chain.back()));
+                server = server->next;
+            }
         }
     }
     PRIM(sem_post(&sem_blockchain),"sem_post(sem_blockchain)");
+    PRIM(sem_post(&sem_mining),"sem_post(sem_mining)");
     pthread_exit(EXIT_SUCCESS);
 }
 
@@ -637,78 +605,6 @@ void * fthread(void __attribute__((unused)) * arg)
 
 
 
-bool receiv_block(share_block_t * share_block_rcvd)
-{
-    bool rcvd=false;
-    fd_set read_set;
-    struct timeval time_val;
-
-    FD_ZERO(&read_set);
-    FD_SET(my_sockfd, &read_set);
-    time_val.tv_sec = 0;
-    time_val.tv_usec = 10000;
-
-    bool not_share=false;
-
-    Block * newBlock = new Block(
-            share_block_rcvd->previous_hash,
-            share_block_rcvd->timestamp,
-            share_block_rcvd->nonce);
-
-    transaction_t * transaction = (transaction_t *) malloc(sizeof(transaction_t));
-    while (select(my_sockfd+1, &read_set, NULL, NULL, &time_val))
-    {
-        //tant qu'on recoit des messages on affiche le resultat
-        if (recv(my_sockfd, transaction, MSG_MAX_LENGTH, 0) == -1)
-        {
-            perror("recv:");
-            close(my_sockfd);
-            exit(EXIT_FAILURE);
-        }
-        if(transaction->header!=SHARE_TRANSACTION_HEADER)
-        {
-            VERB(printf("reception transaction externe"));
-            not_share=true;
-            break;
-        }
-        VERB(printf("réception transaction block\n"));
-        rcvd = true;
-        Transaction * trans = new Transaction(
-                transaction->from_addr,
-                transaction->to_addr,
-                transaction->amount);
-        newBlock->transactions.push_back(trans);
-    }
-    if(not_share)
-        return false;
-    if(!rcvd)
-        //si on n'a recu aucun message on le signale
-        VERB(printf("aucune adresse disponible\n"));
-
-    VERB(printf("verif  du nouveau bloc\n"));
-    newBlock->calculateHash();
-
-    //verifier l'integrité de la donne et inserer
-    //la donnée recu dans la blockchain
-
-    Blockchain * newBlockchain = blockchain->copyConstructor();
-    newBlockchain->chain.push_back(newBlock);
-
-    PRIM(sem_wait(&sem_blockchain),"sem_wait(sem_blockchain)");
-    if(newBlockchain->isChainValid() &&
-            (blockchain->chain.size()<newBlockchain->chain.size() 
-             || (blockchain->chain.size()==newBlockchain->chain.size()
-                 && blockchain->chain.back()->transactions.size()
-                 < newBlockchain->chain.back()->transactions.size())))
-    {
-        VERB(printf("nouveau bloc valide\n"));
-        delete(blockchain);
-        blockchain = newBlockchain;
-    }
-    return true;
-}
-
-
 
 
 /********************************main********************************/
@@ -774,6 +670,7 @@ int main(int argc, char ** argv)
     //initialisation des semaphores
     PRIM(sem_init(&sem_server,1,1),"sem_init(sem_server)");
     PRIM(sem_init(&sem_blockchain,1,1),"sem_init(sem_blockchain)");
+    PRIM(sem_init(&sem_mining,1,1),"sem_init(sem_mining)");
 
     // Initialize RCF.
     RCF::RcfInitDeinit rcfInit;
@@ -848,7 +745,7 @@ int main(int argc, char ** argv)
     pthread_t * tid = (pthread_t*) malloc(sizeof(pthread_t));
     THREAD(pthread_create(tid,NULL,fthread,NULL),"pthread_create");
 
-    pthread_t * mine = (pthread_t*) malloc(sizeof(pthread_t));
+    pthread_t * mine = (pthread_t*) malloc(100*sizeof(pthread_t));
 
     //thread courant: repond aux requetes
 
@@ -895,20 +792,15 @@ int main(int argc, char ** argv)
                 client_noeud.push_back(newClient);
             }
 
-            VERB(printf("reception transaction de %s à %s, montant %lf\n",
-                        get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount));
-            //ajouter la transaction a la liste d'attente de la blockchain
-            blockchain->createTransaction(
-                    new Transaction(
-                        get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount
-                        )
-                    );
-            if(blockchain->pendingTransactions.size()>=5)
-            {
-                //thread mine pending transactions
-                mine = (pthread_t*) malloc(sizeof(pthread_t));
-                THREAD(pthread_create(mine,NULL,threadMine,NULL),"pthread_create");
-            }
+            /*VERB(*/printf("reception transaction de %s à %s, montant %lf\n",
+                        get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount)/*)*/;
+
+            //thread mine pending transactions
+            nb_thread = (nb_thread+1) %100;
+            arg_mine[nb_thread].from_addr = get_rcvd->from_addr;
+            arg_mine[nb_thread].to_addr = get_rcvd->to_addr;
+            arg_mine[nb_thread].amount = get_rcvd->amount;
+            THREAD(pthread_create(&mine[nb_thread],NULL,threadMine,&arg_mine[nb_thread]),"pthread_create");
         }
         else if(msg_rcvd->header==ASK_BALANCE_HEADER)
         {

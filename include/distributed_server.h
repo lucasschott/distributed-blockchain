@@ -61,12 +61,11 @@ typedef struct syn_t{
     in_port_t port;
 }share_server_t, connect_t, keep_t, ask_blockchain_t;
 
-typedef struct block_t{
-    uint16_t header;
-    char previous_hash[BLOCK_HASH_SIZE];
-    time_t timestamp;
-    long nonce;
-}share_block_t;
+typedef struct mine_arg_t{
+    string from_addr;
+    string to_addr;
+    double amount;
+}mine_arg_t;
 
 
 //stockage de données pour le maintien des

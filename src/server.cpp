@@ -15,6 +15,7 @@ volatile bool end_signal = false;
 //programme ou non
 bool verbose = false;
 
+bool disp_blockchain = false;
 //adresse de la racine de la table de hachage
 Blockchain * blockchain = NULL;
 
@@ -22,6 +23,8 @@ Blockchain * blockchain = NULL;
 connected_server * server_table = NULL;
 
 string my_account;
+
+int pas_valide;
 
 typedef struct client_noeud_t {
     string client;
@@ -47,6 +50,10 @@ in_port_t my_port;
 sem_t sem_blockchain;
 sem_t sem_server;
 
+void send_to_server(struct in6_addr server_addr,
+        in_port_t server_port,msg_t * msg, int msg_len);
+
+
 //interface distribué
 class NoeudBloc
 {
@@ -65,6 +72,10 @@ class NoeudBloc
                 blockchain = newChain;
                 VERB(cout << "la blockchain est valide" << endl);
             }
+            else
+            {
+                VERB(cout << "la blockchain n'est valide" << endl);
+            }
         }
 
         void sendBlock(Block block_a)
@@ -78,7 +89,24 @@ class NoeudBloc
             {
                 delete(blockchain);
                 blockchain = newChain;
-                VERB(cout << "la blockchain est valide" << endl);
+                VERB(cout << "le block recu est valide" << endl);
+            }
+            else
+            {
+                pas_valide++;
+                VERB(cout << "le block n'est pas valide" << endl);
+                if(pas_valide>3)
+                {
+                    //TODO ask blockchain
+                    pas_valide=0;
+                    ask_blockchain_t msg_ask;
+                    msg_ask.header = ASK_BLOCKCHAIN_HEADER;
+                    msg_ask.addr = my_addr;
+                    msg_ask.port = my_port;
+                    send_to_server(server_table->addr,server_table->port,
+                            (msg_t*) &msg_ask,sizeof(ask_blockchain_t));
+
+                }
             }
         }
 };
@@ -523,7 +551,7 @@ void * threadMine(void __attribute__((unused)) * arg)
         struct in6_addr client_addr;
         in_port_t client_port;
 
-        while(server!=NULL)
+        while(server!=NULL && !disp_blockchain)
         {
             VERB(printf("envoi block\n"));
             client_addr = server->addr;
@@ -599,7 +627,7 @@ void * fthread(void __attribute__((unused)) * arg)
                 client_noeud.at(i).qualite--;
         }
 
-        sleep(2);
+        sleep(1);
     }
 
     VERB(printf("fin thread boucle\n"));
@@ -691,12 +719,15 @@ int main(int argc, char ** argv)
 
     //verification des options utilisées, -v
     int c_option;
-    while( (c_option = getopt(argc, argv, "v")) != EOF )
+    while( (c_option = getopt(argc, argv, "vd")) != EOF )
     {
         switch(c_option)
         {
             case 'v':
                 verbose = true;
+                break;
+            case 'd':
+                disp_blockchain = true;
                 break;
             case '?':
                 break;
@@ -825,7 +856,7 @@ int main(int argc, char ** argv)
     msg_rcvd=receive_m(&client_sockaddr,&client_addrlen);
 
     //boucle d'actions et de réponse aux requetes de clients et de servers
-    while(!end_signal)
+    while(!end_signal && !disp_blockchain)
     {
         //si le message recu est un message put 
         if(msg_rcvd->header==TRANSACTION_HEADER)
@@ -844,7 +875,7 @@ int main(int argc, char ** argv)
                         VERB(cout << "client fidèle : " << get_rcvd->from_addr << " récompensé de " << get_rcvd->amount/10 << " points blockchain" << endl);
                         blockchain->createTransaction(
                                 new Transaction(
-                                    nullptr,get_rcvd->from_addr,get_rcvd->amount/10)
+                                    "",get_rcvd->from_addr,get_rcvd->amount/10)
                                 );
                     }
                     break;
@@ -1026,6 +1057,11 @@ int main(int argc, char ** argv)
         msg_rcvd=receive_m(&client_sockaddr,&client_addrlen);
     }
 
+    if(disp_blockchain)
+    {
+        sleep(1);
+        cout << blockchain->toString() << endl;
+    }
     //fin de l'execution de la boucle si le processus recoit le signal SIGINT
 
     //envoi du signal SIGUSR1 au 2eme thread pour lui dire de s'arreter

@@ -4,7 +4,7 @@ vpath %.h include/
 vpath server bin/
 vpath client bin/
 
-.PHONY: all clean
+.PHONY: all clean test
 
 
 CC = g++ 
@@ -15,13 +15,9 @@ L_REP = lib/
 
 PROG_S = bloc
 PROG_C = participant
-TEST = server
 
 
 all: $(PROG_C) $(PROG_S) 
-
-test: test.cpp
-	g++ $< RCF/src/RCF/RCF.cpp -I include -I boost -I RCF/include -lpthread -std=c++11 -w -ldl -o server
 
 $(PROG_S): server.o distributed_server.o addr_and_hash.o affichage.o transaction.o block.o blockchain.o sha256.o
 	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) RCF/src/RCF/RCF.cpp  -I include -I RCF/include -I boost -o $(B_REP)$@
@@ -46,3 +42,6 @@ RCF.o: ../RCF/src/RCF/RCF.cpp
 
 clean:
 	rm -f obj/*.o bin/bloc bin/participant
+
+test:
+	./test.sh

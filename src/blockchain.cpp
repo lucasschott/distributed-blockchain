@@ -29,10 +29,8 @@ Block * Blockchain::getLatestBlock()
 
 void Blockchain::minePendingTransactions(string miningRewardAddress)
 {
-    printf("1\n");
     Block * block = new Block(
             time(nullptr),pendingTransactions,getLatestBlock()->hash);
-    printf("2\n");
     block->mineBlock(difficulty);
     chain.push_back(block);
     pendingTransactions.clear();

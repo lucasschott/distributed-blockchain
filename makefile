@@ -41,7 +41,7 @@ RCF.o: ../RCF/src/RCF/RCF.cpp
 	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -I boost -o $(O_REP)$@
 
 clean:
-	rm -f obj/*.o bin/bloc bin/participant
+	rm -f obj/*.o bin/bloc bin/participant log*
 
 test:
 	./test.sh

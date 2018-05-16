@@ -487,7 +487,7 @@ void * threadMine(void * arg)
     PRIM(sem_wait(&sem_mining),"sem_wait(sem_mining)");
     PRIM(sem_wait(&sem_blockchain),"sem_wait(sem_blockchain)");
 
-    cout << "create transaction: from " << args->from_addr << " to " << args->to_addr << " amout " << args->amount << endl;
+    VERB(cout << "create transaction: from " << args->from_addr << " to " << args->to_addr << " amout " << args->amount << endl);
     //ajouter la transaction a la liste d'attente de la blockchain
     blockchain->createTransaction(
             new Transaction(
@@ -792,8 +792,8 @@ int main(int argc, char ** argv)
                 client_noeud.push_back(newClient);
             }
 
-            /*VERB(*/printf("reception transaction de %s à %s, montant %lf\n",
-                        get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount)/*)*/;
+            VERB(printf("reception transaction de %s à %s, montant %lf\n",
+                        get_rcvd->from_addr,get_rcvd->to_addr,get_rcvd->amount));
 
             //thread mine pending transactions
             nb_thread = (nb_thread+1) %100;

@@ -20,7 +20,7 @@ PROG_C = participant
 all: $(PROG_C) $(PROG_S) 
 
 $(PROG_S): server.o distributed_server.o addr_and_hash.o affichage.o transaction.o block.o blockchain.o sha256.o
-	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) my_lib/dlfcn/dlopen.c my_lib/dlfcn/dlerror.c Rmy_lib/dlfcn/dlclose.c CF/src/RCF/RCF.cpp -I mylib/include -I include -I RCF/include -I boost -o $(B_REP)$@
+	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) my_lib/dlfcn/dlopen.c my_lib/dlfcn/dlerror.c my_lib/dlfcn/dlclose.c RCF/src/RCF/RCF.cpp -I my_lib/include -I include -I RCF/include -I boost -o $(B_REP)$@
 
 $(PROG_C): client.o affichage.o addr_and_hash.o
 	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) -o $(B_REP)$@
@@ -38,7 +38,7 @@ distributed_server.o: distributed_server.cpp distributed_server.h
 RCF.o: ../RCF/src/RCF/RCF.cpp
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -I boost -I mylib/include -o $(O_REP)$@
+	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -I boost -I my_lib/include -o $(O_REP)$@
 
 clean:
 	rm -f obj/*.o bin/bloc bin/participant

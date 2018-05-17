@@ -8,7 +8,7 @@
 
 import BoostBuild
 
-tester = BoostBuild.Tester(use_test_config=False)
+tester = BoostBuild.Tester()
 
 tester.write("jamroot.jam", """
 obj test : test.cpp : <include>a&&b ;

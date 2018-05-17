@@ -15,7 +15,7 @@
 
 // thread::id this_thread::get_id();
 
-#include <boost/thread/thread_only.hpp>
+#include <boost/thread/thread.hpp>
 #include <cstdlib>
 #include <algorithm>
 

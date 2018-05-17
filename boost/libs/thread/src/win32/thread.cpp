@@ -14,7 +14,7 @@
 #endif
 //#define BOOST_THREAD_VERSION 3
 
-#include <boost/thread/thread_only.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/thread/once.hpp>
 #include <boost/thread/tss.hpp>
 #include <boost/thread/condition_variable.hpp>
@@ -22,7 +22,6 @@
 #include <boost/thread/future.hpp>
 
 #include <boost/assert.hpp>
-#include <boost/cstdint.hpp>
 #if defined BOOST_THREAD_USES_DATETIME
 #include <boost/date_time/posix_time/conversion.hpp>
 #endif
@@ -129,7 +128,7 @@ namespace boost
             return ret;
         }
 
-        //typedef void* uintptr_t;
+        typedef void* uintptr_t;
 
         inline uintptr_t _beginthreadex(void* security, unsigned stack_size, unsigned (__stdcall* start_address)(void*),
                                               void* arglist, unsigned initflag, unsigned* thrdaddr)
@@ -279,12 +278,6 @@ namespace boost
                 interruption_enabled=false;
 #endif
             }
-            ~externally_launched_thread() {
-              BOOST_ASSERT(notify.empty());
-              notify.clear();
-              BOOST_ASSERT(async_states_.empty());
-              async_states_.clear();
-            }
 
             void run()
             {}
@@ -409,8 +402,7 @@ namespace boost
 
     unsigned thread::hardware_concurrency() BOOST_NOEXCEPT
     {
-        //SYSTEM_INFO info={{0}};
-        SYSTEM_INFO info;
+        SYSTEM_INFO info={{0}};
         GetSystemInfo(&info);
         return info.dwNumberOfProcessors;
     }
@@ -433,10 +425,10 @@ namespace boost
         {
             LARGE_INTEGER get_due_time(detail::timeout const&  target_time)
             {
-                LARGE_INTEGER due_time={{0,0}};
+                LARGE_INTEGER due_time={{0}};
                 if(target_time.relative)
                 {
-                    unsigned long const elapsed_milliseconds=detail::win32::GetTickCount64()-target_time.start;
+                    unsigned long const elapsed_milliseconds=GetTickCount()-target_time.start;
                     LONGLONG const remaining_milliseconds=(target_time.milliseconds-elapsed_milliseconds);
                     LONGLONG const hundred_nanoseconds_in_one_millisecond=10000;
 
@@ -447,7 +439,7 @@ namespace boost
                 }
                 else
                 {
-                    SYSTEMTIME target_system_time={0,0,0,0,0,0,0,0};
+                    SYSTEMTIME target_system_time={0};
                     target_system_time.wYear=target_time.abs_time.date().year();
                     target_system_time.wMonth=target_time.abs_time.date().month();
                     target_system_time.wDay=target_time.abs_time.date().day();
@@ -754,16 +746,6 @@ namespace boost
         current_thread_data->notify_all_at_thread_exit(&cond, lk.release());
       }
     }
-//namespace detail {
-//
-//    void BOOST_THREAD_DECL make_ready_at_thread_exit(shared_ptr<shared_state_base> as)
-//    {
-//      detail::thread_data_base* const current_thread_data(detail::get_current_thread_data());
-//      if(current_thread_data)
-//      {
-//        current_thread_data->make_ready_at_thread_exit(as);
-//      }
-//    }
-//}
 }
+
 

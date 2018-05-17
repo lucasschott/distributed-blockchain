@@ -1,7 +1,6 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 //
-// Copyright (c) 2010-2013 Barend Gehrels, Amsterdam, the Netherlands.
-// Copyright (c) 2012-2013 Adam Wulkiewicz, Lodz, Poland.
+// Copyright (c) 2010-2012 Barend Gehrels, Amsterdam, the Netherlands.
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -23,19 +22,17 @@ enum function_type
 { 
     function_unknown, 
     function_define, 
-    function_constructor_destructor, 
+    function_constructor, 
     function_member, 
-    function_free,
+    function_free 
 };
 
 struct base_element
 {
     std::string name;
     std::string brief_description;
-    
-    bool skip;
 
-    std::string id;
+    bool skip;
 
     base_element(std::string const& n = "")
         : name(n)
@@ -50,7 +47,6 @@ struct parameter : public base_element
     std::string type;
     std::string default_value; // for template parameters
     std::string fulltype; // post-processed
-    std::string fulltype_without_links;
 };
 
 struct enumeration_value : public base_element
@@ -89,12 +85,6 @@ struct markup
     }
 };
 
-struct paragraph
-{
-    std::string title;
-    std::string text;
-};
-
 // Base of a class/struct, function, define
 struct element : public base_element
 {
@@ -113,10 +103,6 @@ struct element : public base_element
     std::vector<parameter> template_parameters;
     std::vector<parameter> parameters;
 
-    std::vector<paragraph> paragraphs;
-    std::string warning;
-    std::string note;
-
     element()
         : line(0)
     {}
@@ -128,17 +114,12 @@ struct function : public element
     function_type type;
     std::string definition, argsstring;
     std::string return_type, return_description;
-    std::string precondition;
-
-    std::string return_type_without_links;
-    bool is_static, is_const, is_explicit, is_virtual;
 
     bool unique;
 
     function()
         : type(function_unknown)
         , unique(true)
-        , is_static(false), is_const(false), is_explicit(false), is_virtual(false)
     {}
 
 };
@@ -164,7 +145,7 @@ struct class_or_struct : public element
     std::vector<function> functions;
 
     std::vector<base_element> typedefs;
-    std::vector<parameter> variables;
+    std::vector<base_element> variables;
 
     std::vector<base_class> base_classes;
 };
@@ -172,9 +153,6 @@ struct class_or_struct : public element
 
 struct documentation
 {
-    std::string group_id;
-    std::string group_title;
-
     // Only one expected (no grouping)
     class_or_struct cos; 
 

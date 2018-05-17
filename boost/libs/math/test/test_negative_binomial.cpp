@@ -35,8 +35,7 @@ using boost::math::negative_binomial_distribution;
 #include <boost/math/special_functions/gamma.hpp>
   using boost::math::lgamma;  // log gamma
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <boost/test/floating_point_comparison.hpp> // for BOOST_CHECK_CLOSE
 #include "table_type.hpp"
 #include "test_out_of_range.hpp"
@@ -799,7 +798,7 @@ if(std::numeric_limits<RealType>::is_specialized)
   return;
 } // template <class RealType> void test_spots(RealType) // Any floating-point type RealType.
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
   // Check that can generate negative_binomial distribution using the two convenience methods:
   using namespace boost::math;
@@ -840,8 +839,8 @@ BOOST_AUTO_TEST_CASE( test_main )
       "to pass.</note>" << std::cout;
 #endif
 
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

@@ -9,7 +9,7 @@
 -->
 
 
-<section id="string_algo.usage" last-revision="$Date: 2013-09-21 13:17:00 -0700 (Sat, 21 Sep 2013) $">
+<section id="string_algo.usage" last-revision="$Date: 2012-12-28 10:19:25 -0800 (Fri, 28 Dec 2012) $">
     <title>Usage</title>
 
     <using-namespace name="boost"/>

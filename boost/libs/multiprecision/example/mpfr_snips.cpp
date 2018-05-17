@@ -35,7 +35,6 @@ void t1()
    mpfr_init(r);
    mpfr_set(r, b.backend().data(), GMP_RNDN);
    //]
-   mpfr_clear(r);
 }
 
 int main()

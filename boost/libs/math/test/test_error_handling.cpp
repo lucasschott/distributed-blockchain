@@ -64,11 +64,8 @@ T user_indeterminate_result_error(const char* , const char* , const T& )
 #include <boost/math/concepts/real_concept.hpp>
 #include <boost/math/policies/policy.hpp>
 #include <boost/math/policies/error_handling.hpp>
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <cerrno> // for errno
-#include <iostream>
-#include <iomanip>
 //
 // Define some policies:
 //
@@ -179,7 +176,7 @@ void test_error(T)
    BOOST_CHECK_EQUAL(errno, EDOM);
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    // Test error handling.
    // (Parameter value, arbitrarily zero, only communicates the floating point type FPT).
@@ -187,7 +184,8 @@ BOOST_AUTO_TEST_CASE( test_main )
    test_error(0.0); // Test double.
    test_error(0.0L); // Test long double.
    test_error(boost::math::concepts::real_concept(0.0L)); // Test concepts.
-} // BOOST_AUTO_TEST_CASE( test_main )
+   return 0;
+} // int test_main(int, char* [])
 
 /*
 

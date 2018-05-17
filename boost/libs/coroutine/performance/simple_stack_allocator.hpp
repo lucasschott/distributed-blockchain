@@ -15,14 +15,13 @@
 #include <boost/config.hpp>
 
 #include <boost/context/detail/config.hpp>
-#include <boost/coroutine/stack_context.hpp>
 
 #ifdef BOOST_HAS_ABI_HEADERS
 #  include BOOST_ABI_PREFIX
 #endif
 
 namespace boost {
-namespace coroutines {
+namespace context {
 
 template< std::size_t Max, std::size_t Default, std::size_t Min >
 class simple_stack_allocator
@@ -37,7 +36,7 @@ public:
     static std::size_t minimum_stacksize()
     { return Min; }
 
-    void allocate( stack_context & ctx, std::size_t size)
+    void * allocate( std::size_t size) const
     {
         BOOST_ASSERT( minimum_stacksize() <= size);
         BOOST_ASSERT( maximum_stacksize() >= size);
@@ -45,17 +44,16 @@ public:
         void * limit = std::calloc( size, sizeof( char) );
         if ( ! limit) throw std::bad_alloc();
 
-        ctx.size = size;
-        ctx.sp = static_cast< char * >( limit) + ctx.size;
+        return static_cast< char * >( limit) + size;
     }
 
-    void deallocate( stack_context & ctx)
+    void deallocate( void * vp, std::size_t size) const
     {
-        BOOST_ASSERT( ctx.sp);
-        BOOST_ASSERT( minimum_stacksize() <= ctx.size);
-        BOOST_ASSERT( maximum_stacksize() >= ctx.size);
+        BOOST_ASSERT( vp);
+        BOOST_ASSERT( minimum_stacksize() <= size);
+        BOOST_ASSERT( maximum_stacksize() >= size);
 
-        void * limit = static_cast< char * >( ctx.sp) - ctx.size;
+        void * limit = static_cast< char * >( vp) - size;
         std::free( limit);
     }
 };

@@ -41,6 +41,7 @@
 int main(int,char*[])
 {
   using namespace boost;
+  typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
   typedef subgraph< adjacency_list<vecS, vecS, directedS,
     property<vertex_color_t, int>, property<edge_index_t, int> > > Graph;
 

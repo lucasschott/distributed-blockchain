@@ -557,7 +557,6 @@ void test_integer_ops(const boost::mpl::int_<boost::multiprecision::number_kind_
       if(std::numeric_limits<Real>::is_specialized && (!std::numeric_limits<Real>::is_bounded || ((int)i * 17 < std::numeric_limits<Real>::digits)))
       {
          BOOST_CHECK_EQUAL(lsb(Real(1) << (i * 17)) ,  i * 17);
-         BOOST_CHECK_EQUAL(msb(Real(1) << (i * 17)) ,  i * 17);
          BOOST_CHECK(bit_test(Real(1) << (i * 17), i * 17));
          BOOST_CHECK(!bit_test(Real(1) << (i * 17), i * 17 + 1));
          if(i)
@@ -642,107 +641,6 @@ void test_integer_ops(const boost::mpl::int_<boost::multiprecision::number_kind_
 }
 
 template <class Real, class T>
-void test_float_funcs(const T&){}
-
-template <class Real>
-void test_float_funcs(const boost::mpl::true_&)
-{
-   if(boost::multiprecision::is_interval_number<Real>::value)
-      return;
-   //
-   // Test variable reuse in function calls, see https://svn.boost.org/trac/boost/ticket/8326
-   //
-   Real a(2), b(10);
-   a = pow(a, b);
-   BOOST_CHECK_EQUAL(a, 1024);
-   a = 2;
-   b = pow(a, b);
-   BOOST_CHECK_EQUAL(b, 1024);
-   b = 10;
-   a = pow(a, 10);
-   BOOST_CHECK_EQUAL(a, 1024);
-   a = -2;
-   a = abs(a);
-   BOOST_CHECK_EQUAL(a, 2);
-   a = -2;
-   a = fabs(a);
-   BOOST_CHECK_EQUAL(a, 2);
-   a = 2.5;
-   a = floor(a);
-   BOOST_CHECK_EQUAL(a, 2);
-   a = 2.5;
-   a = ceil(a);
-   BOOST_CHECK_EQUAL(a, 3);
-   a = 2.5;
-   a = trunc(a);
-   BOOST_CHECK_EQUAL(a, 2);
-   a = 2.25;
-   a = round(a);
-   BOOST_CHECK_EQUAL(a, 2);
-   a = 2;
-   a = ldexp(a, 1);
-   BOOST_CHECK_EQUAL(a, 4);
-   int i;
-   a = frexp(a, &i);
-   BOOST_CHECK_EQUAL(a, 0.5);
-
-   Real tol = std::numeric_limits<Real>::epsilon() * 3;
-   a = 4;
-   a = sqrt(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, 2, tol);
-   a = 3;
-   a = exp(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(exp(Real(3))), tol);
-   a = 3;
-   a = log(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(log(Real(3))), tol);
-   a = 3;
-   a = log10(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(log10(Real(3))), tol);
-
-   a = 0.5;
-   a = sin(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(sin(Real(0.5))), tol);
-   a = 0.5;
-   a = cos(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(cos(Real(0.5))), tol);
-   a = 0.5;
-   a = tan(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(tan(Real(0.5))), tol);
-   a = 0.5;
-   a = asin(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(asin(Real(0.5))), tol);
-   a = 0.5;
-   a = acos(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(acos(Real(0.5))), tol);
-   a = 0.5;
-   a = atan(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(atan(Real(0.5))), tol);
-   a = 0.5;
-   a = sinh(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(sinh(Real(0.5))), tol);
-   a = 0.5;
-   a = cosh(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(cosh(Real(0.5))), tol);
-   a = 0.5;
-   a = tanh(a);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(tanh(Real(0.5))), tol);
-   a = 4;
-   b = 2;
-   a = fmod(a, b);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(fmod(Real(4), Real(2))), tol);
-   a = 4;
-   b = fmod(a, b);
-   BOOST_CHECK_CLOSE_FRACTION(b, Real(fmod(Real(4), Real(2))), tol);
-   b = 2;
-   a = atan2(a, b);
-   BOOST_CHECK_CLOSE_FRACTION(a, Real(atan2(Real(4), Real(2))), tol);
-   a = 4;
-   b = atan2(a, b);
-   BOOST_CHECK_CLOSE_FRACTION(b, Real(atan2(Real(4), Real(2))), tol);
-}
-
-template <class Real, class T>
 void test_float_ops(const T&){}
 
 template <class Real>
@@ -764,15 +662,15 @@ void test_float_ops(const boost::mpl::int_<boost::multiprecision::number_kind_fl
    BOOST_CHECK_EQUAL(ldexp(Real(2), 5) ,  64);
    BOOST_CHECK_EQUAL(ldexp(Real(2), -5) ,  Real(2) / 32);
    Real v(512);
-   int exponent;
-   Real r = frexp(v, &exponent);
+   int exp;
+   Real r = frexp(v, &exp);
    BOOST_CHECK_EQUAL(r ,  0.5);
-   BOOST_CHECK_EQUAL(exponent ,  10);
+   BOOST_CHECK_EQUAL(exp ,  10);
    BOOST_CHECK_EQUAL(v ,  512);
    v = 1 / v;
-   r = frexp(v, &exponent);
+   r = frexp(v, &exp);
    BOOST_CHECK_EQUAL(r ,  0.5);
-   BOOST_CHECK_EQUAL(exponent ,  -8);
+   BOOST_CHECK_EQUAL(exp ,  -8);
    typedef typename Real::backend_type::exponent_type e_type;
    BOOST_CHECK_EQUAL(ldexp(Real(2), e_type(5)) ,  64);
    BOOST_CHECK_EQUAL(ldexp(Real(2), e_type(-5)) ,  Real(2) / 32);
@@ -787,7 +685,7 @@ void test_float_ops(const boost::mpl::int_<boost::multiprecision::number_kind_fl
    BOOST_CHECK_EQUAL(r ,  0.5);
    BOOST_CHECK_EQUAL(exp2 ,  -8);
    //
-   // pow and exponent:
+   // pow and exp:
    //
    v = 3.25;
    r = pow(v, 0);
@@ -814,15 +712,13 @@ void test_float_ops(const boost::mpl::int_<boost::multiprecision::number_kind_fl
    {
       if(std::numeric_limits<Real>::has_infinity)
       {
-         BOOST_CHECK((boost::math::isinf)(Real(20) / 0u));
+         BOOST_CHECK(boost::math::isinf(Real(20) / 0u));
       }
       else
       {
          BOOST_CHECK_THROW(Real(Real(20) / 0u), std::overflow_error);
       }
    }
-
-   test_float_funcs<Real>(boost::mpl::bool_<std::numeric_limits<Real>::is_specialized>());
 }
 
 template <class T>
@@ -838,38 +734,6 @@ struct lexical_cast_target_type
       >::type
    >::type type;
 };
-
-template <class Real, class Num>
-void test_negative_mixed_minmax(boost::mpl::true_ const&)
-{
-   if(!std::numeric_limits<Real>::is_bounded || (std::numeric_limits<Real>::digits >= std::numeric_limits<Num>::digits))
-   {
-      Real mx1((std::numeric_limits<Num>::max)() - 1);
-      ++mx1;
-      Real mx2((std::numeric_limits<Num>::max)());
-      BOOST_CHECK_EQUAL(mx1, mx2);
-      mx1 = (std::numeric_limits<Num>::max)() - 1;
-      ++mx1;
-      mx2 = (std::numeric_limits<Num>::max)();
-      BOOST_CHECK_EQUAL(mx1, mx2);
-
-      if(!std::numeric_limits<Real>::is_bounded || (std::numeric_limits<Real>::digits > std::numeric_limits<Num>::digits))
-      {
-         Real mx3((std::numeric_limits<Num>::min)() + 1);
-         --mx3;
-         Real mx4((std::numeric_limits<Num>::min)());
-         BOOST_CHECK_EQUAL(mx3, mx4);
-         mx3 = (std::numeric_limits<Num>::min)() + 1;
-         --mx3;
-         mx4 = (std::numeric_limits<Num>::min)();
-         BOOST_CHECK_EQUAL(mx3, mx4);
-      }
-   }
-}
-template <class Real, class Num>
-void test_negative_mixed_minmax(boost::mpl::false_ const&)
-{
-}
 
 template <class Real, class Num>
 void test_negative_mixed(boost::mpl::true_ const&)
@@ -1144,10 +1008,6 @@ void test_negative_mixed(boost::mpl::true_ const&)
    BOOST_CHECK_EQUAL(d ,  -3 * -4 - -2);
    d = b * static_cast<cast_type>(n3) - static_cast<cast_type>(n1);
    BOOST_CHECK_EQUAL(d ,  -3 * -4 - -2);
-   //
-   // Conversion from min and max values:
-   //
-   test_negative_mixed_minmax<Real, Num>(boost::mpl::bool_<std::numeric_limits<Real>::is_integer && std::numeric_limits<Num>::is_integer>());
 }
 
 template <class Real, class Num>
@@ -1765,9 +1625,6 @@ void test()
    b = 30;
    c = a + b * c;
    BOOST_CHECK_EQUAL(c ,  20 + 30 * 10);
-   c = 10;
-   c = a + b / c;
-   BOOST_CHECK_EQUAL(c ,  20 + 30 / 10);
 
    //
    // Test conditionals:

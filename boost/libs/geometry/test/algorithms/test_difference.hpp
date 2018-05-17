@@ -40,7 +40,7 @@
 #if defined(TEST_WITH_SVG)
 #  define BOOST_GEOMETRY_DEBUG_SEGMENT_IDENTIFIER
 #  define BOOST_GEOMETRY_DEBUG_IDENTIFIER
-#  include <boost/geometry/io/svg/svg_mapper.hpp>
+#  include <boost/geometry/extensions/io/svg/svg_mapper.hpp>
 #  include <boost/geometry/algorithms/detail/overlay/debug_turn_info.hpp>
 #endif
 
@@ -144,7 +144,7 @@ void test_difference(std::string const& caseid, G1 const& g1, G2 const& g2,
                 "difference: " << caseid
                 << " #points expected: " << expected_point_count
                 << " detected: " << n
-                << " type: " << (type_for_assert_message<G1, G2>())
+                << " type: " << string_from_type<coordinate_type>::name()
                 );
     }
 
@@ -154,7 +154,7 @@ void test_difference(std::string const& caseid, G1 const& g1, G2 const& g2,
                 "difference: " << caseid
                 << " #outputs expected: " << expected_count
                 << " detected: " << clip.size()
-                << " type: " << (type_for_assert_message<G1, G2>())
+                << " type: " << string_from_type<coordinate_type>::name()
                 );
     }
 

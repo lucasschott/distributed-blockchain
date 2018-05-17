@@ -2,7 +2,7 @@
 <!DOCTYPE boostbook PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
   "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
 <boostbook id="boost" xmlns:xi="http://www.w3.org/2001/XInclude"
-           last-revision="$Date: 2013-10-08 14:01:18 -0700 (Tue, 08 Oct 2013) $">
+           last-revision="$Date: 2012-12-15 10:28:27 -0800 (Sat, 15 Dec 2012) $">
   <title>The Boost C++ Libraries BoostBook Documentation Subset</title>
 
   <preface id="about">
@@ -98,7 +98,17 @@
 
    <xi:include href="chrono.xml"/>
 
-   <xi:include href="circular_buffer.auto_index.docbook"/>
+   <library name="Circular Buffer" dirname="circular_buffer" html-only="1"
+            url="../../libs/circular_buffer/index.html">
+     <libraryinfo>
+       <author>
+         <firstname>Jan</firstname>
+         <surname>Gaspar</surname>
+       </author>
+       <librarypurpose>A STL compliant container also known as ring or cyclic buffer</librarypurpose>
+       <librarycategory name="category:containers"/> 
+     </libraryinfo>
+   </library>
 
    <library name="Compatibility" dirname="compatibility" html-only="1">
      <libraryinfo>
@@ -179,7 +189,7 @@
      </libraryinfo>
    </library>
 
-   <xi:include href="container.auto_index.docbook"/>
+   <xi:include href="container.xml"/>
 
    <library name="Conversion" dirname="conversion" html-only="1"
             url="../../libs/conversion/index.html">
@@ -302,7 +312,7 @@
      </libraryinfo>
    </library>
 
-   <xi:include href="interprocess.auto_index.docbook"/>
+   <xi:include href="interprocess.xml"/>
 
    <library name="Interval" dirname="numeric/interval" html-only="1"
             url="../../libs/numeric/interval/doc/index.html">
@@ -325,7 +335,7 @@
      </libraryinfo>
    </library>
 
-   <xi:include href="intrusive.auto_index.docbook"/>
+   <xi:include href="intrusive.xml"/>
 
    <library name="I/O State Savers" dirname="io" html-only="1">
      <libraryinfo>
@@ -684,8 +694,6 @@
        <librarycategory name="category:data-structures"/>
      </libraryinfo>
    </library>
-    
-   <xi:include href="type_erasure.xml"/>
 
    <library name="Type Traits" dirname="type_traits" html-only="1">
      <libraryinfo>
@@ -761,8 +769,5 @@
     <xi:include href="../../tools/build/v2/doc/src/userman.xml"/>
   </part>
 </boostbook>
-
-
-
 
 

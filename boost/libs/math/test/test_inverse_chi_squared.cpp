@@ -20,8 +20,7 @@
 using ::boost::math::concepts::real_concept;
 
 //#include <boost/math/tools/test.hpp>
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <boost/test/floating_point_comparison.hpp> // for BOOST_CHECK_CLOSE_FRACTION
 
 #include <boost/math/distributions/inverse_chi_squared.hpp> // for inverse_chisquared_distribution
@@ -306,7 +305,7 @@ void test_spots(RealType)
 } // template <class RealType>void test_spots(RealType)
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
   BOOST_MATH_CONTROL_FP;
 
@@ -498,8 +497,8 @@ BOOST_AUTO_TEST_CASE( test_main )
 #endif
 
  /*    */
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

@@ -48,16 +48,14 @@ namespace boost
         }
         return std::string("unspecified future_errc value\n");
     }
-    future_error_category future_error_category_var;
   }
 
-  BOOST_THREAD_DECL
   const system::error_category&
   future_category() BOOST_NOEXCEPT
   {
-      return thread_detail::future_error_category_var;
+      static thread_detail::future_error_category f;
+      return f;
   }
 
 }
 #endif
-

@@ -18,8 +18,7 @@
 #include <pch.hpp> // include directory libs/math/src/tr1/ is needed.
 
 #include <boost/math/concepts/real_concept.hpp> // for real_concept
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // Boost.Test
+#include <boost/test/test_exec_monitor.hpp> // Boost.Test
 #include <boost/test/floating_point_comparison.hpp>
 
 #include <boost/math/distributions/gamma.hpp>
@@ -216,15 +215,15 @@ void test_spots(RealType)
     // Rely on default definition in derived accessors.
 
    // error tests
-   check_out_of_range<boost::math::gamma_distribution<RealType> >(1, 1);
-   BOOST_CHECK_THROW(boost::math::gamma_distribution<RealType>(0, 1), std::domain_error);
-   BOOST_CHECK_THROW(boost::math::gamma_distribution<RealType>(-1, 1), std::domain_error);
-   BOOST_CHECK_THROW(boost::math::gamma_distribution<RealType>(1, 0), std::domain_error);
-   BOOST_CHECK_THROW(boost::math::gamma_distribution<RealType>(1, -1), std::domain_error);
+   check_out_of_range<gamma_distribution<RealType> >(1, 1);
+   BOOST_CHECK_THROW(gamma_distribution<RealType>(0, 1), std::domain_error);
+   BOOST_CHECK_THROW(gamma_distribution<RealType>(-1, 1), std::domain_error);
+   BOOST_CHECK_THROW(gamma_distribution<RealType>(1, 0), std::domain_error);
+   BOOST_CHECK_THROW(gamma_distribution<RealType>(1, -1), std::domain_error);
 
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    // Basic sanity-check spot values.
    // (Parameter value, arbitrarily zero, only communicates the floating point type).
@@ -242,8 +241,8 @@ BOOST_AUTO_TEST_CASE( test_main )
       "to pass.</note>" << std::cout;
 #endif
 
-   
-} // BOOST_AUTO_TEST_CASE( test_main )
+   return 0;
+} // int test_main(int, char* [])
 
 
 /*

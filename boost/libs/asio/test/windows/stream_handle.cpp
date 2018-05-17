@@ -2,7 +2,7 @@
 // stream_handle.cpp
 // ~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2013 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2012 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,6 @@
 #include <boost/asio/windows/stream_handle.hpp>
 
 #include <boost/asio/io_service.hpp>
-#include "../archetypes/async_result.hpp"
 #include "../unit_test.hpp"
 
 //------------------------------------------------------------------------------
@@ -49,7 +48,6 @@ void test()
     io_service ios;
     char mutable_char_buffer[128] = "";
     const char const_char_buffer[128] = "";
-    archetypes::lazy_handler lazy;
     boost::system::error_code ec;
 
     // basic_stream_handle constructors.
@@ -113,17 +111,11 @@ void test()
 
     handle1.async_write_some(buffer(mutable_char_buffer), &write_some_handler);
     handle1.async_write_some(buffer(const_char_buffer), &write_some_handler);
-    int i1 = handle1.async_write_some(buffer(mutable_char_buffer), lazy);
-    (void)i1;
-    int i2 = handle1.async_write_some(buffer(const_char_buffer), lazy);
-    (void)i2;
 
     handle1.read_some(buffer(mutable_char_buffer));
     handle1.read_some(buffer(mutable_char_buffer), ec);
 
     handle1.async_read_some(buffer(mutable_char_buffer), &read_some_handler);
-    int i3 = handle1.async_read_some(buffer(mutable_char_buffer), lazy);
-    (void)i3;
   }
   catch (std::exception&)
   {
@@ -134,9 +126,9 @@ void test()
 } // namespace windows_stream_handle_compile
 
 //------------------------------------------------------------------------------
-
-BOOST_ASIO_TEST_SUITE
-(
-  "windows/stream_handle",
-  BOOST_ASIO_TEST_CASE(windows_stream_handle_compile::test)
-)
+test_suite* init_unit_test_suite(int, char*[])
+{
+  test_suite* test = BOOST_TEST_SUITE("windows/stream_handle");
+  test->add(BOOST_TEST_CASE(&windows_stream_handle_compile::test));
+  return test;
+}

@@ -59,8 +59,6 @@ BOOST_AUTO_TEST_CASE( pairing_heap_test )
     run_pairing_heap_test<false, true>();
     run_pairing_heap_test<true, false>();
     run_pairing_heap_test<true, true>();
-
-    RUN_EMPLACE_TEST(pairing_heap);
 }
 
 BOOST_AUTO_TEST_CASE( pairing_heap_compare_lookup_test )
@@ -69,11 +67,4 @@ BOOST_AUTO_TEST_CASE( pairing_heap_compare_lookup_test )
                                       boost::heap::compare<less_with_T>,
                                       boost::heap::allocator<std::allocator<int> > > pri_queue;
     run_common_heap_tests<pri_queue>();
-}
-
-
-BOOST_AUTO_TEST_CASE( pairing_heap_leak_test )
-{
-    typedef boost::heap::pairing_heap<boost::shared_ptr<int> > pri_queue;
-    run_leak_check_test<pri_queue>();
 }

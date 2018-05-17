@@ -14,8 +14,7 @@
 #define BOOST_MATH_OVERFLOW_ERROR_POLICY ignore_error
 
 #include <boost/math/concepts/real_concept.hpp>
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/test_exec_monitor.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/math/special_functions/factorials.hpp>
 #include <boost/math/special_functions/gamma.hpp>
@@ -287,7 +286,7 @@ void test_spots(T)
    }
 } // template <class T> void test_spots(T)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    BOOST_MATH_CONTROL_FP;
    test_spots(0.0F);
@@ -322,7 +321,7 @@ BOOST_AUTO_TEST_CASE( test_main )
 
 
 
-   
+   return 0;
 }
 
 /*

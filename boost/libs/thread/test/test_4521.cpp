@@ -5,8 +5,7 @@
 
 #define BOOST_THREAD_VERSION 2
 
-#include <boost/thread/thread_only.hpp>
-#include <boost/thread/future.hpp>
+#include <boost/thread.hpp>
 
 int calculate_the_answer_to_life_the_universe_and_everything()
 {

@@ -15,8 +15,7 @@
 
 
 // Include unit test framework
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <vector>
@@ -150,9 +149,11 @@ static void replace_test()
     BOOST_CHECK( str1==string("123AxXxCa23ca456c321") );
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int, char*[] )
 {
     find_test();
     join_test();
     replace_test();
+
+    return 0;
 }

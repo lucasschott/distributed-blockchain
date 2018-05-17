@@ -32,9 +32,6 @@ namespace example
     class example
     {
     public:
-        example(example const&) = default;
-        example& operator=(example const&) = delete;
-
         int integer;
         static int static_integer;
         mutable int mutable_integer;

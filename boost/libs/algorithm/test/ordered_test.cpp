@@ -13,9 +13,7 @@
 #include <iostream>
 
 #include <boost/algorithm/cxx11/is_sorted.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 using namespace boost;
 
@@ -148,8 +146,9 @@ test_increasing_decreasing(void)
     
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int, char * [] )
 {
     test_ordered ();
     test_increasing_decreasing ();
+    return 0;
 }

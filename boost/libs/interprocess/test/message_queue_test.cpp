@@ -15,10 +15,10 @@
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/set.hpp>
 #include <boost/interprocess/allocators/node_allocator.hpp>
-#include <boost/interprocess/detail/os_thread_functions.hpp>
 #include <vector>
 #include <cstddef>
 #include <limits>
+#include <boost/thread.hpp>
 #include <memory>
 #include <string>
 #include "get_process_id_name.hpp"
@@ -251,9 +251,8 @@ bool test_buffer_overflow()
       pmessage_queue = ptr.get();
 
       //Launch the receiver thread
-      boost::interprocess::ipcdetail::OS_thread_t thread;
-      boost::interprocess::ipcdetail::thread_launch(thread, &receiver);
-      boost::interprocess::ipcdetail::thread_yield();
+      boost::thread thread(&receiver);
+      boost::thread::yield();
 
       int nummsg = NumMsg;
 
@@ -261,7 +260,7 @@ bool test_buffer_overflow()
          pmessage_queue->send(msgsend, MsgSize, 0);
       }
 
-      boost::interprocess::ipcdetail::thread_join(thread);
+      thread.join();
    }
    boost::interprocess::message_queue::remove(test::get_process_id_name());
    return true;

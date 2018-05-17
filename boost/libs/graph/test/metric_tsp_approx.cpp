@@ -86,6 +86,7 @@ void testScalability(unsigned numpts)
         property <edge_weight_t, double,
         property<edge_index_t, int> > > Graph;
     typedef graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef graph_traits <Graph>::edge_descriptor Edge;
     typedef property_map<Graph, edge_weight_t>::type WeightMap;
     typedef set<simple_point<double>, cmpPnt<double> > PointSet;
     typedef vector< Vertex > Container;
@@ -198,6 +199,7 @@ int main(int argc, char* argv[])
     typedef adjacency_matrix<undirectedS, no_property,
         property <edge_weight_t, double> > Graph;
     typedef graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef graph_traits <Graph>::edge_descriptor Edge;
     typedef vector<Vertex> Container;
     typedef property_map<Graph, edge_weight_t>::type WeightMap;
     typedef property_map<Graph, vertex_index_t>::type VertexMap;

@@ -3,10 +3,6 @@
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
 //  file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#include <boost/thread/detail/config.hpp>
-#ifdef BOOST_THREAD_ONCE_ATOMIC
-#include "./once_atomic.cpp"
-#else
 #define __STDC_CONSTANT_MACROS
 #include <boost/thread/pthread/pthread_mutex_scoped_lock.hpp>
 #include <boost/thread/once.hpp>
@@ -17,9 +13,9 @@
 
 namespace boost
 {
-    namespace thread_detail
+    namespace detail
     {
-        BOOST_THREAD_DECL uintmax_atomic_t once_global_epoch=BOOST_THREAD_DETAIL_UINTMAX_ATOMIC_MAX_C;
+        BOOST_THREAD_DECL thread_detail::uintmax_atomic_t once_global_epoch=BOOST_THREAD_DETAIL_UINTMAX_ATOMIC_MAX_C;
         BOOST_THREAD_DECL pthread_mutex_t once_epoch_mutex=PTHREAD_MUTEX_INITIALIZER;
         BOOST_THREAD_DECL pthread_cond_t once_epoch_cv = PTHREAD_COND_INITIALIZER;
 
@@ -60,7 +56,7 @@ namespace boost
 #endif
         }
 
-        uintmax_atomic_t& get_once_per_thread_epoch()
+        thread_detail::uintmax_atomic_t& get_once_per_thread_epoch()
         {
             BOOST_VERIFY(!pthread_once(&epoch_tss_key_flag,create_epoch_tss_key));
             void* data=pthread_getspecific(epoch_tss_key);
@@ -75,4 +71,3 @@ namespace boost
     }
 
 }
-#endif //

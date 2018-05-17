@@ -51,9 +51,8 @@ namespace detail {
             return std::string(buffer.get());
         }
 
-        std::wstring from_utf8(boost::string_ref text)
+        std::wstring from_utf8(std::string const& x)
         {
-            std::string x(text.begin(), text.end());
             int buffer_count = MultiByteToWideChar(CP_UTF8, 0, x.c_str(), -1, 0, 0); 
         
             if (!buffer_count)
@@ -82,7 +81,7 @@ namespace detail {
 #endif
 
 #if QUICKBOOK_WIDE_PATHS
-    fs::path generic_to_path(boost::string_ref x)
+    fs::path generic_to_path(std::string const& x)
     {
         return fs::path(from_utf8(x));
     }
@@ -92,9 +91,9 @@ namespace detail {
         return to_utf8(x.generic_wstring());
     }
 #else
-    fs::path generic_to_path(boost::string_ref x)
+    fs::path generic_to_path(std::string const& x)
     {
-        return fs::path(x.begin(), x.end());
+        return fs::path(x);
     }
 
     std::string path_to_generic(fs::path const& x)
@@ -167,7 +166,7 @@ namespace detail {
         if (_isatty(_fileno(stderr))) _setmode(_fileno(stderr), _O_U16TEXT);
     }
 
-    void write_utf8(ostream::base_ostream& out, boost::string_ref x)
+    void write_utf8(ostream::base_ostream& out, std::string const& x)
     {
         out << from_utf8(x);
     }
@@ -193,7 +192,7 @@ namespace detail {
     {
     }
 
-    void write_utf8(ostream::base_ostream& out, boost::string_ref x)
+    void write_utf8(ostream::base_ostream& out, std::string const& x)
     {
         out << x;
     }
@@ -278,11 +277,6 @@ namespace detail {
     }
 
     ostream& ostream::operator<<(std::string const& x) {
-        write_utf8(base, x);
-        return *this;
-    }
-
-    ostream& ostream::operator<<(boost::string_ref x) {
         write_utf8(base, x);
         return *this;
     }

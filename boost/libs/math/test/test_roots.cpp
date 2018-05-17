@@ -5,8 +5,7 @@
 
 #include <pch.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/test_exec_monitor.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/test/results_collector.hpp>
 #include <boost/math/special_functions/beta.hpp>
@@ -315,10 +314,10 @@ void test_beta(T, const char* /* name */)
    test_inverses<T>(ibeta_large_data);
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    test_beta(0.1, "double");
-   
+   return 0;
 }
 
 

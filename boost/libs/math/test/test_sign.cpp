@@ -1,4 +1,4 @@
-#define BOOST_TEST_MAIN// Copyright John Maddock 2008
+// Copyright John Maddock 2008
 //  (C) Copyright Paul A. Bristow 2011 (added tests for changesign)
 // Use, modification and distribution are subject to the
 // Boost Software License, Version 1.0.
@@ -8,8 +8,7 @@
 #include <boost/math/concepts/real_concept.hpp> // for real_concept
 #include <boost/math/special_functions/sign.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // Boost.Test
+#include <boost/test/test_exec_monitor.hpp> // Boost.Test
 #include <boost/test/results_collector.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
@@ -139,7 +138,7 @@ void test_spots(RealType /*T*/, const char* /*type_name*/)
 }
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    // Basic sanity-check spot values.
    // (Parameter value, arbitrarily zero, only communicates the floating point type).
@@ -157,6 +156,6 @@ BOOST_AUTO_TEST_CASE( test_main )
       "to pass.</note>" << std::cout;
 #endif
 
-   
-} // BOOST_AUTO_TEST_CASE( test_main )
+   return 0;
+} // int test_main(int, char* [])
 

@@ -55,6 +55,7 @@ test_skeleton_and_content(const communicator& comm, int root = 0)
   using boost::mpi::get_content;
   using boost::make_counting_iterator;
   using boost::mpi::broadcast;
+  using boost::mpi::get_content;
 
   typedef std::list<int>::iterator iterator;
 

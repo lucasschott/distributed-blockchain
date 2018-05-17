@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// (C) Copyright Ion Gaztanaga  2006-2013
+// (C) Copyright Ion Gaztanaga  2006-2012
 //
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -47,6 +47,7 @@ typedef multiset< MyClass, MemberOption>   MemberMultiset;
 int main()
 {
    typedef std::vector<MyClass>::iterator VectIt;
+   typedef std::vector<MyClass>::reverse_iterator VectRit;
 
    //Create several MyClass objects, each one with a different value
    std::vector<MyClass> values;
@@ -68,8 +69,8 @@ int main()
 
    //Now test sets
    {
-      BaseSet::reverse_iterator rbit(baseset.rbegin());
-      MemberMultiset::iterator mit(membermultiset.begin());
+      BaseSet::reverse_iterator rbit(baseset.rbegin()), rbitend(baseset.rend());
+      MemberMultiset::iterator mit(membermultiset.begin()), mitend(membermultiset.end());
       VectIt it(values.begin()), itend(values.end());
 
       //Test the objects inserted in the base hook set

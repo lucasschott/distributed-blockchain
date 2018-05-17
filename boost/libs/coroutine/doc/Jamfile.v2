@@ -3,18 +3,12 @@
 # Distributed under the Boost Software License, Version 1.0. (See accompanying 
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-project coroutine/doc ;
+xml coro : coro.qbk ;
 
-import boostbook ;
-import quickbook ;
-import modules ;
-
-boostbook coro
+boostbook standalone
     :
-        coro.qbk
+        coro
     :
-        # Path for links to Boost:
-        <xsl:param>boost.root=../../../..
         # HTML options first:
         # How far down we chunk nested sections, basically all of them:
         <xsl:param>chunk.section.depth=3
@@ -26,4 +20,6 @@ boostbook coro
         <xsl:param>toc.max.depth=3
         # How far down we go with TOC's
         <xsl:param>generate.section.toc.level=10
+        # Path for links to Boost:
+        <xsl:param>boost.root=../../../..
     ;

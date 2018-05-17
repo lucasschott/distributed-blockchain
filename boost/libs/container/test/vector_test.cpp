@@ -39,17 +39,6 @@ template class boost::container::vector<test::movable_and_copyable_int,
 template class boost::container::vector<test::movable_and_copyable_int,
    std::allocator<test::movable_and_copyable_int> >;
 
-namespace container_detail {
-
-#ifndef BOOST_CONTAINER_VECTOR_ITERATOR_IS_POINTER
-
-template class vec_iterator<int*, true >;
-template class vec_iterator<int*, false>;
-
-#endif   //BOOST_CONTAINER_VECTOR_ITERATOR_IS_POINTER
-
-}
-
 }}
 
 int test_expand_bwd()
@@ -151,10 +140,6 @@ int main()
       return 1;
    if(test_expand_bwd())
       return 1;
-   if(!test::default_init_test< vector<int, test::default_init_allocator<int> > >()){
-      std::cerr << "Default init test failed" << std::endl;
-      return 1;
-   }
 
    MyEnumVector v;
    Test t;

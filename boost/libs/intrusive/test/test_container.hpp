@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// (C) Copyright Ion Gaztanaga  2007-2013
+// (C) Copyright Ion Gaztanaga  2007-2012
 //
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -27,8 +27,14 @@ struct is_unordered
    static const bool value = false;
 };
 
-template<class Container>
-struct test_container_typedefs
+template<class T>
+struct has_const_overloads
+{
+   static const bool value = true;
+};
+
+template< class Container >
+void test_container( Container & c )
 {
    typedef typename Container::value_type       value_type;
    typedef typename Container::iterator         iterator;
@@ -39,17 +45,10 @@ struct test_container_typedefs
    typedef typename Container::const_pointer    const_pointer;
    typedef typename Container::difference_type  difference_type;
    typedef typename Container::size_type        size_type;
-   typedef typename Container::value_traits     value_traits;
-};
-
-template< class Container >
-void test_container( Container & c )
-{
-   typedef typename Container::const_iterator   const_iterator;
-   typedef typename Container::iterator         iterator;
+   typedef typename Container::difference_type  difference_type;
    typedef typename Container::size_type        size_type;
+   typedef typename Container::value_traits     value_traits;
 
-   {test_container_typedefs<Container> dummy;  (void)dummy;}
    const size_type num_elem = c.size();
    BOOST_TEST( c.empty() == (num_elem == 0) );
    {
@@ -58,19 +57,19 @@ void test_container( Container & c )
       for(i = 0; i < num_elem; ++i){
          ++it;
       }
-      BOOST_TEST( it == itend );
+      BOOST_TEST( it == c.end() );
       BOOST_TEST( c.size() == i );
    }
 
    //Check iterator conversion
-   BOOST_TEST(const_iterator(c.begin()) == c.cbegin() );
+   BOOST_TEST( const_iterator(c.begin()) == c.cbegin() );
    {
       const_iterator it(c.cbegin()), itend(c.cend());
       size_type i;
       for(i = 0; i < num_elem; ++i){
          ++it;
       }
-      BOOST_TEST( it == itend );
+      BOOST_TEST( it == c.cend() );
       BOOST_TEST( c.size() == i );
    }
 }
@@ -291,7 +290,7 @@ void test_common_unordered_and_associative_container(Container & c, Data & d)
 }
 
 template< class Container, class Data >
-void test_associative_container_invariants(Container & c, Data & d)
+void test_associative_container_invariants(Container & c, Data & d, boost::intrusive::detail::true_type)
 {
    typedef typename Container::const_iterator const_iterator;
    for( typename Data::const_iterator di = d.begin(), de = d.end();
@@ -318,8 +317,22 @@ void test_associative_container_invariants(Container & c, Data & d)
 }
 
 template< class Container, class Data >
+void test_associative_container_invariants(Container &, Data &, boost::intrusive::detail::false_type)
+{}
+
+template< class Container, class Data >
+void test_associative_container_invariants(Container & c, Data & d)
+{
+   using namespace boost::intrusive;
+   typedef typename detail::remove_const<Container>::type Type;
+   typedef detail::bool_<has_const_overloads<Type>::value> enabler;
+   test_associative_container_invariants(c, d, enabler());
+}
+
+template< class Container, class Data >
 void test_associative_container(Container & c, Data & d)
 {
+   typedef typename Container::const_iterator const_iterator;
    assert( d.size() > 2 );
 
    c.clear();
@@ -333,7 +346,7 @@ void test_associative_container(Container & c, Data & d)
 }
 
 template< class Container, class Data >
-void test_unordered_associative_container_invariants(Container & c, Data & d)
+void test_unordered_associative_container_invariants(Container & c, Data & d, boost::intrusive::detail::true_type)
 {
    typedef typename Container::size_type size_type;
    typedef typename Container::const_iterator const_iterator;
@@ -365,6 +378,19 @@ void test_unordered_associative_container_invariants(Container & c, Data & d)
       total_objects += c.bucket_size(i);
    }
    BOOST_TEST( total_objects ==  c.size() );
+}
+
+template< class Container, class Data >
+void test_unordered_associative_container_invariants(Container &, Data &, boost::intrusive::detail::false_type)
+{}
+
+template< class Container, class Data >
+void test_unordered_associative_container_invariants(Container & c, Data & d)
+{
+   using namespace boost::intrusive;
+   typedef typename detail::remove_const<Container>::type Type;
+   typedef detail::bool_<has_const_overloads<Type>::value> enabler;
+   test_unordered_associative_container_invariants(c, d, enabler());
 }
 
 template< class Container, class Data >

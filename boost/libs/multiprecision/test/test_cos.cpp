@@ -16,13 +16,11 @@
 #include <boost/array.hpp>
 #include "test.hpp"
 
-#if !defined(TEST_MPF_50) && !defined(TEST_MPF) && !defined(TEST_BACKEND) && !defined(TEST_CPP_DEC_FLOAT) && !defined(TEST_MPFR) && !defined(TEST_MPFR_50) && !defined(TEST_MPFI_50) && !defined(TEST_FLOAT128)
+#if !defined(TEST_MPF_50) && !defined(TEST_MPF) && !defined(TEST_BACKEND) && !defined(TEST_MPZ) && !defined(TEST_CPP_DEC_FLOAT) && !defined(TEST_MPFR) && !defined(TEST_MPFR_50) && !defined(TEST_MPQ)
 #  define TEST_MPF_50
 //#  define TEST_MPF
 #  define TEST_BACKEND
 #  define TEST_CPP_DEC_FLOAT
-#  define TEST_MPFI_50
-#  define TEST_FLOAT128
 
 #ifdef _MSC_VER
 #pragma message("CAUTION!!: No backend type specified so testing everything.... this will take some time!!")
@@ -39,17 +37,11 @@
 #if defined(TEST_MPFR_50)
 #include <boost/multiprecision/mpfr.hpp>
 #endif
-#if defined(TEST_MPFI_50)
-#include <boost/multiprecision/mpfi.hpp>
-#endif
 #ifdef TEST_BACKEND
 #include <boost/multiprecision/concepts/mp_number_archetypes.hpp>
 #endif
 #ifdef TEST_CPP_DEC_FLOAT
 #include <boost/multiprecision/cpp_dec_float.hpp>
-#endif
-#ifdef TEST_FLOAT128
-#include <boost/multiprecision/float128.hpp>
 #endif
 
 template <class T>
@@ -252,11 +244,7 @@ void test()
          max_err = err;
    }
    std::cout << "Max error was: " << max_err << std::endl;
-#if defined(BOOST_INTEL) && defined(TEST_FLOAT128)
-   BOOST_TEST(max_err < 8000);
-#else
    BOOST_TEST(max_err < 750);
-#endif
 
    //
    // Test with some exact binary values as input - this tests our code
@@ -291,11 +279,7 @@ void test()
    BOOST_TEST(max_err < 20);
 
    BOOST_TEST(cos(T(0)) == 1);
-#if defined(BOOST_INTEL) && defined(TEST_FLOAT128)
-   BOOST_TEST(fabs(cos(half_pi)) < 4 * std::numeric_limits<T>::epsilon());
-#else
    BOOST_TEST(fabs(cos(half_pi)) < std::numeric_limits<T>::epsilon());
-#endif
 }
 
 
@@ -312,10 +296,6 @@ int main()
    test<boost::multiprecision::mpfr_float_50>();
    test<boost::multiprecision::mpfr_float_100>();
 #endif
-#ifdef TEST_MPFI_50
-   test<boost::multiprecision::mpfi_float_50>();
-   test<boost::multiprecision::mpfi_float_100>();
-#endif
 #ifdef TEST_CPP_DEC_FLOAT
    test<boost::multiprecision::cpp_dec_float_50>();
    test<boost::multiprecision::cpp_dec_float_100>();
@@ -330,9 +310,6 @@ int main()
    test<boost::multiprecision::number<boost::multiprecision::cpp_dec_float<59, long long, std::allocator<void> > > >();
    test<boost::multiprecision::number<boost::multiprecision::cpp_dec_float<58, long long, std::allocator<void> > > >();
 #endif
-#endif
-#ifdef TEST_FLOAT128
-   test<boost::multiprecision::float128>();
 #endif
    return boost::report_errors();
 }

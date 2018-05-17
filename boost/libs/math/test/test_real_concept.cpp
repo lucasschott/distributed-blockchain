@@ -7,15 +7,14 @@
 #include <boost/math/concepts/real_concept.hpp> // for real_concept
 #include <boost/math/constants/constants.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // Boost.Test
+#include <boost/test/test_exec_monitor.hpp> // Boost.Test
 #include <boost/test/results_collector.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
 #ifndef BOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS
 
@@ -568,6 +567,6 @@ BOOST_AUTO_TEST_CASE( test_main )
       "to pass.</note>" << std::cout;
 #endif
 
-   
-} // BOOST_AUTO_TEST_CASE( test_main )
+   return 0;
+} // int test_main(int, char* [])
 

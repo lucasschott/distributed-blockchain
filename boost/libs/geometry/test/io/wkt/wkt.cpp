@@ -30,16 +30,6 @@
 #include <boost/geometry/core/topological_dimension.hpp>
 #include <boost/geometry/io/wkt/read.hpp>
 #include <boost/geometry/io/wkt/write.hpp>
-#include <boost/variant/variant.hpp>
-
-template <typename G>
-void check_wkt(G const& geometry, std::string const& expected)
-{
-    std::ostringstream out;
-    out << bg::wkt(geometry);
-    BOOST_CHECK_EQUAL(boost::to_upper_copy(out.str()),
-                      boost::to_upper_copy(expected));
-}
 
 template <typename G>
 void test_wkt(std::string const& wkt, std::size_t n, double len = 0,
@@ -67,8 +57,10 @@ void test_wkt(std::string const& wkt, std::size_t n, double len = 0,
         BOOST_CHECK_CLOSE(double(bg::perimeter(geometry)), peri, 0.0001);
     }
 
-    check_wkt(geometry, wkt);
-    check_wkt(boost::variant<G>(geometry), wkt);
+    std::ostringstream out;
+    out << bg::wkt(geometry);
+    BOOST_CHECK_EQUAL(boost::to_upper_copy(out.str()),
+                boost::to_upper_copy(wkt));
 }
 
 template <typename G>

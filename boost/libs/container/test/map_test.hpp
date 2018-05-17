@@ -44,7 +44,7 @@ int map_test ()
    typedef typename MyStdMap::value_type  StdPairType;
    const int max = 100;
 
-   BOOST_TRY{
+   try{
       MyBoostMap *boostmap = new MyBoostMap;
       MyStdMap *stdmap = new MyStdMap;
       MyBoostMultiMap *boostmultimap = new MyBoostMultiMap;
@@ -179,14 +179,14 @@ int map_test ()
          if(!CheckEqualPairContainers(boostmap, stdmap)) return 1;
          if(!CheckEqualPairContainers(boostmultimap, stdmultimap)) return 1;
 
-         typename MyBoostMap::iterator it = boostmap->begin();
+         typename MyBoostMap::iterator it;
          typename MyBoostMap::const_iterator cit = it;
          (void)cit;
 
-         boostmap->erase(boostmap->begin());
-         stdmap->erase(stdmap->begin());
-         boostmultimap->erase(boostmultimap->begin());
-         stdmultimap->erase(stdmultimap->begin());
+         boostmap->erase(boostmap->begin()++);
+         stdmap->erase(stdmap->begin()++);
+         boostmultimap->erase(boostmultimap->begin()++);
+         stdmultimap->erase(stdmultimap->begin()++);
          if(!CheckEqualPairContainers(boostmap, stdmap)) return 1;
          if(!CheckEqualPairContainers(boostmultimap, stdmultimap)) return 1;
 
@@ -467,10 +467,9 @@ int map_test ()
       delete boostmultimap;
       delete stdmultimap;
    }
-   BOOST_CATCH(...){
-      BOOST_RETHROW;
+   catch(...){
+      throw;
    }
-   BOOST_CATCH_END
    return 0;
 }
 
@@ -486,7 +485,7 @@ int map_test_copyable ()
 
    const int max = 100;
 
-   BOOST_TRY{
+   try{
    MyBoostMap *boostmap = new MyBoostMap;
    MyStdMap *stdmap = new MyStdMap;
    MyBoostMultiMap *boostmultimap = new MyBoostMultiMap;
@@ -538,10 +537,9 @@ int map_test_copyable ()
          delete stdmultimap;
       }
    }
-   BOOST_CATCH(...){
-      BOOST_RETHROW;
+   catch(...){
+      throw;
    }
-   BOOST_CATCH_END
    return 0;
 }
 

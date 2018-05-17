@@ -11,13 +11,9 @@
 #include <boost/algorithm/searching/boyer_moore_horspool.hpp>
 #include <boost/algorithm/searching/knuth_morris_pratt.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
-#include <ctime>        // for clock_t
 #include <iostream>
-#include <fstream>
-#include <iomanip>
 #include <algorithm>
 #include <vector>
 
@@ -126,7 +122,7 @@ namespace {
         }
     }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
     vec c1  = ReadFromFile ( "search_test_data/0001.corpus" );
     vec p1b = ReadFromFile ( "search_test_data/0001b.pat" );
@@ -144,4 +140,6 @@ BOOST_AUTO_TEST_CASE( test_main )
     check_one ( c1, p1e, c1.size() - p1e.size ());  
     std::cout << "--- Not found ---" << std::endl;
     check_one ( c1, p1n, -1 );      //  Not found
+    
+    return 0;
     }

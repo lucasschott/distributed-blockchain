@@ -218,8 +218,7 @@ long test_overloads(int n_verts, int n_edges, std::size_t seed){
                                get(edge_capacity,g),
                                get(edge_residual_capacity,g),
                                get(edge_reverse,g),
-                               boost::make_iterator_property_map(
-                                 color_vec.begin(), get(vertex_index, g)),
+                               &(color_vec[0]),
                                get(vertex_index,g),
                                src, sink);
 

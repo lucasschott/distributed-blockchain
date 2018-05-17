@@ -6,8 +6,7 @@
 #include <pch_light.hpp>
 
 #include <boost/math/concepts/real_concept.hpp>
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/test_exec_monitor.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/math/special_functions/math_fwd.hpp>
 #include <boost/math/tools/test.hpp>
@@ -56,7 +55,7 @@ void expected_results()
       << BOOST_STDLIB << ", " << BOOST_PLATFORM << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    expected_results();
    BOOST_MATH_CONTROL_FP;
@@ -73,6 +72,7 @@ BOOST_AUTO_TEST_CASE( test_main )
       "not available at all, or because they are too inaccurate for these tests "
       "to pass.</note>" << std::cout;
 #endif
+   return 0;
 }
 
 

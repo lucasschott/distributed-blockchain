@@ -11,8 +11,7 @@
 #include <boost/algorithm/searching/boyer_moore_horspool.hpp>
 #include <boost/algorithm/searching/knuth_morris_pratt.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <iostream>
 #include <string>
@@ -219,7 +218,7 @@ namespace {
     }
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
     std::string haystack1 ( "NOW AN FOWE\220ER ANNMAN THE ANPANMANEND" );
     std::string needle1   ( "ANPANMAN" );
@@ -269,4 +268,5 @@ BOOST_AUTO_TEST_CASE( test_main )
     const std::string mikhail_corpus = std::string (8, 'a') + mikhail_pattern;
 
     check_one ( mikhail_corpus, mikhail_pattern, 8 );
+    return 0;
     }

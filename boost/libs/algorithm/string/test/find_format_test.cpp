@@ -12,8 +12,7 @@
 #include <boost/algorithm/string/formatter.hpp>
 
 // Include unit test framework
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <boost/test/test_tools.hpp>
 
@@ -155,8 +154,10 @@ void find_format_all_test()
     BOOST_CHECK_EQUAL(output, source);
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int, char*[] )
 {
     find_format_test();
     find_format_all_test();
+
+    return 0;
 }

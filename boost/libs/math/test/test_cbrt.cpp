@@ -73,7 +73,7 @@ void expected_results()
       << BOOST_STDLIB << ", " << BOOST_PLATFORM << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    expected_results();
    BOOST_MATH_CONTROL_FP;
@@ -85,5 +85,6 @@ BOOST_AUTO_TEST_CASE( test_main )
    test_cbrt(boost::math::concepts::real_concept(0.1), "real_concept");
 #endif
 #endif
+   return 0;
 }
 

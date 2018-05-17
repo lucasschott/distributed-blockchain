@@ -2,7 +2,7 @@
 // stream_protocol.cpp
 // ~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2013 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2012 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,6 +16,7 @@
 // Test that header file is self-contained.
 #include <boost/asio/local/stream_protocol.hpp>
 
+#include <boost/bind.hpp>
 #include <cstring>
 #include <boost/asio/io_service.hpp>
 #include "../unit_test.hpp"
@@ -201,8 +202,9 @@ void test()
 
 //------------------------------------------------------------------------------
 
-BOOST_ASIO_TEST_SUITE
-(
-  "local/stream_protocol",
-  BOOST_ASIO_TEST_CASE(local_stream_protocol_socket_compile::test)
-)
+test_suite* init_unit_test_suite(int, char*[])
+{
+  test_suite* test = BOOST_TEST_SUITE("local/stream_protocol");
+  test->add(BOOST_TEST_CASE(&local_stream_protocol_socket_compile::test));
+  return test;
+}

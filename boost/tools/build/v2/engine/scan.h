@@ -8,6 +8,7 @@
  * scan.h - the jam yacc scanner
  *
  * External functions:
+ *
  *  yyerror( char *s ) - print a parsing error message.
  *  yyfparse( char *s ) - scan include file s.
  *  yylex() - parse the next token, returning its type.
@@ -21,11 +22,6 @@
  * for a punctuation keyword. This allows non-punctuation keywords to be used in
  * lists without quoting.
  */
-
-#include "lists.h"
-#include "object.h"
-#include "parse.h"
-
 
 /*
  * YYSTYPE - value of a lexical token
@@ -42,20 +38,20 @@ typedef struct _YYSTYPE
     int          number;
     OBJECT     * file;
     int          line;
-    char const * keyword;
+    const char * keyword;
 } YYSTYPE;
 
 extern YYSTYPE yylval;
 
 void yymode( int n );
-void yyerror( char const * s );
+void yyerror( const char * s );
 int yyanyerrors();
 void yyfparse( OBJECT * s );
 int yyline();
 int yylex();
 int yyparse();
-void yyinput_last_read_token( OBJECT * * name, int * line );
+void yyinput_stream( OBJECT * * name, int * line );
 
-#define SCAN_NORMAL  0  /* normal parsing */
-#define SCAN_STRING  1  /* look only for matching } */
-#define SCAN_PUNCT   2  /* only punctuation keywords */
+# define SCAN_NORMAL  0   /* normal parsing */
+# define SCAN_STRING  1   /* look only for matching } */
+# define SCAN_PUNCT   2   /* only punctuation keywords */

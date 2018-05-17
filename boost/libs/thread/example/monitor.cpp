@@ -9,7 +9,7 @@
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/recursive_mutex.hpp>
-#include <boost/thread/thread_only.hpp>
+#include <boost/thread/thread.hpp>
 
 namespace {
 const int ITERS = 100;

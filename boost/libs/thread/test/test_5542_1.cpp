@@ -6,7 +6,7 @@
 #define BOOST_THREAD_VERSION 2
 
 #include <iostream>
-#include <boost/thread/thread_only.hpp>
+#include <boost/thread.hpp>
 
 class Worker
 {

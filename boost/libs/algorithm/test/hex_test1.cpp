@@ -9,9 +9,7 @@
 
 #include <boost/config.hpp>
 #include <boost/algorithm/hex.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <iostream>
@@ -143,7 +141,7 @@ const wchar_t *fromhex_fail_w [] = {
     };
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
   test_to_hex<std::string> ( tohex );
   test_from_hex_success<std::string> ( fromhex );
@@ -152,4 +150,5 @@ BOOST_AUTO_TEST_CASE( test_main )
   test_to_hex<std::wstring> ( tohex_w );
   test_from_hex_success<std::wstring> ( fromhex_w );
   test_from_hex_failure<std::wstring> ( fromhex_fail_w );
+  return 0;
 }

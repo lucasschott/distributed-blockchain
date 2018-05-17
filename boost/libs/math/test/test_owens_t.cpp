@@ -33,8 +33,7 @@ using ::boost::math::concepts::real_concept;
 using boost::math::owens_t;
 #include <boost/math/distributions/normal.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/test_exec_monitor.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/array.hpp>
 
@@ -212,7 +211,7 @@ void check_against_T7(RealType)
       const RealType exph = exp(h);
       const RealType t = boost::math::owens_t(exph, expa);
       RealType t7 = boost::math::owens_t_T7(exph,expa);
-      //if(!(boost::math::isnormal)(t) || !(boost::math::isnormal)(t7))
+      //if(!boost::math::isnormal(t) || !boost::math::isnormal(t7))
       //   std::cout << "a = " << expa << " h = " << exph << " t = " << t << " t7 = " << t7 << std::endl;
       BOOST_CHECK_CLOSE_FRACTION(t, t7, tolerance);
     }
@@ -268,7 +267,7 @@ void test_owens_t(T, const char* name)
 }
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
   BOOST_MATH_CONTROL_FP;
 
@@ -309,8 +308,8 @@ BOOST_AUTO_TEST_CASE( test_main )
   test_owens_t(boost::multiprecision::cpp_dec_float_50(0), "cpp_dec_float_50"); // Test real concept.
   test_owens_t(boost::multiprecision::cpp_dec_float_100(0), "cpp_dec_float_100"); // Test real concept.
 #endif
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

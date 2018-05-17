@@ -44,14 +44,10 @@ namespace boost
   }
 }
 
-#if defined BOOST_THREAD_PROVIDES_SIGNATURE_PACKAGED_TASK && defined(BOOST_THREAD_PROVIDES_VARIADIC_THREAD)
-void func(boost::promise<int> p)
-#else
+//void func(boost::promise<int> p)
 boost::promise<int> p;
 void func()
-#endif
 {
-  //p.set_exception(boost::make_exception_ptr(3));
   p.set_exception_at_thread_exit(boost::make_exception_ptr(3));
 }
 
@@ -59,14 +55,10 @@ int main()
 {
   {
     typedef int T;
-#if defined BOOST_THREAD_PROVIDES_SIGNATURE_PACKAGED_TASK && defined(BOOST_THREAD_PROVIDES_VARIADIC_THREAD)
-    boost::promise<T> p;
+    //boost::promise<T> p;
     boost::future<T> f = p.get_future();
-    boost::thread(func, boost::move(p)).detach();
-#else
-    boost::future<T> f = p.get_future();
+    //boost::thread(func, boost::move(p)).detach();
     boost::thread(func).detach();
-#endif
     try
     {
       f.get();
@@ -85,12 +77,9 @@ int main()
     typedef int T;
     boost::promise<T> p2;
     boost::future<T> f = p2.get_future();
-#if defined BOOST_THREAD_PROVIDES_SIGNATURE_PACKAGED_TASK && defined(BOOST_THREAD_PROVIDES_VARIADIC_THREAD)
-    boost::thread(func, boost::move(p2)).detach();
-#else
+    //boost::thread(func, boost::move(p)).detach();
     p = boost::move(p2);
     boost::thread(func).detach();
-#endif
     try
     {
       f.get();

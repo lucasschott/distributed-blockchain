@@ -171,7 +171,7 @@ void expected_results()
       << BOOST_STDLIB << ", " << BOOST_PLATFORM << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    BOOST_MATH_CONTROL_FP;
    expected_results();
@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE( test_main )
       "not available at all, or because they are too inaccurate for these tests "
       "to pass.</note>" << std::cout;
 #endif
-   
+   return 0;
 }
 
 

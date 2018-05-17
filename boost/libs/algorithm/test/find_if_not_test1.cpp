@@ -11,9 +11,7 @@
 
 #include <boost/config.hpp>
 #include <boost/algorithm/cxx11/find_if_not.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <vector>
@@ -85,7 +83,8 @@ void test_sequence1 () {
     }
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
   test_sequence1 ();
+  return 0;
 }

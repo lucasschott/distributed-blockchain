@@ -91,7 +91,7 @@ class WorldMapper : public QWidget
  private:
     typedef boost::geometry::strategy::transform::map_transformer
         <
-            double, 2, 2,
+            point_2d, QPointF,
             true, true
         > map_transformer_type;
 

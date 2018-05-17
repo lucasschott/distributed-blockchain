@@ -50,36 +50,36 @@ keywordstyle=\color{blue}
 
     \section{Présentation}
 
-    Le but de ce projet était de réaliser une blockchain distibuée et de
-    observer son évolution en simulant un cas d'utilisation de cette
-    blockchain. Malheurseusement ce projet n'a pas abouti par manque de temps
-    (du aux autre projets et examens que j'ai priorisés), et par un mauvais
-    choix de technologie.
+    Le but de ce projet est de réaliser une blockchain distibuée et de pouvoir
+    réaliser une simulation d'utilisation de la blockchain pour pouvoir observer
+    son évolution dans le temps.
 
     Dans cette blockchain distribuée, les noeuds bloc stockent la blockchain,
     receptionnent des demandes de transactions et mine des block pour valider
-    ces transactions.
+    ces transactions. Les noeuds bloc communiquent entre eux pour s'échanger les
+    nouveaux block, ou envoyer une blockchain entière.
     Les noeuds participants font des demandes de transactions, et peuvent
     demander aux noeuds bloc la quantité de points blockchain dont ils disposent.
 
-    Ce projet à été réalisé en C++ en utilisant les sockets. Il est uniquement
-    utilisable avec des adresse IPv6.
-    \\
+    Ce projet à été réalisé en C++ en utilisant les sockets et la bibliothèque
+    de programamtion distribuée RCF. Il est uniquement utilisable avec des adresse IPv6.
 
     \section{fonctionnement}
 
     Un participant peut contacter un noeud bloc et lui envoyer une demande de
-    transacation d'un compte a un autre, ce noeud bloc stock met la transaction
-    en attente. Le participant peut demander a un noeud bloc quelle est la
+    transacation d'un compte a un autre, le noeud bloc met alors la transaction
+    en attente pour ensuite la miner dans un block. Le participant peut demander a un noeud bloc quelle est la
     quantité de points blockchain dont dispose un compte, c'est ce qu'on
-    appelle la balance elle peut etre négative si un participant effectue une
-    transaction supérieur à ce qu'il dispose.
+    appelle la "balance", elle peut etre négative si un participant effectue une
+    transaction supérieur à ce dont il dispose.
 
     Les noeud blocs attendent d'avoir suffisement de transactions en attente
-    pour ensuite miner un block et valider les transactions. Il lui faut 10
+    pour ensuite les miner dans un block et valider les transactions. Il lui faut 5
     transactions en attente pour commencer le minage. Une fois le block
     miné, le noeud bloc va l'envoyer à tous les autres noeuds bloc auquel il
-    est connecté.
+    est connecté. Un noeud bloc ne peux miner qu'un block a la fois, donc toutes
+    les transactions recu pendant un minage sont misent en attente jusqu'au
+    minage du prochain bloc.
     \\
 
     Plusieurs noeuds bloc peuvent se connecter entre eux, au moment de la
@@ -90,30 +90,24 @@ keywordstyle=\color{blue}
     procédure de connexion avec les autres noeuds bloc. Tous les noeaud blocs sont
     connectés entre eux avec une topologie full-mesh. Ainsi quand un noeud bloc
     mine un nouveau block, il va le transmettre à tous les autres noeuds bloc. 
+    Si un noeud bloc recoit 3 block invalides de suite il va contacter un autre
+    noeud bloc pour lui demander sa blockchain, comme ca il pourra avoir à
+    nouveau la bonne blockchain à condition que celle-ci soit plus longue que
+    la sienne.
 
     Les noeuds bloc connectés s'envoient des messages de manière périodique pour
     maintenir leur connection, si un noeud bloc ne reçoit plus de messages d'un
     autre noeud bloc il va le conséderer comme mort et les deux noeuds bloc se
-    déconnecteront. Un noeud bloc est considéré comme mort au bout de 30 secondes
-    sans réponse.
-    \\
-
-    Dans la pratique je n'ai pas réussi transférer une blockchain entière d'un
-    noeud bloc à un autre, ainsi quand un nouveau noeud bloc, s'inscrit auprès
-    des autres noeuds bloc, il n'arrive jamais à obtenir la blockchain. Et les
-    échanges de block de fonctionneront pas.
-
-    Donc dans l'état du projet auquel je suis il n'y a pas de distribution de
-    la blockchain. On peut créer un noeud bloc, des noeuds participants peuvent
-    lui envoyer des transactions, et obtenir leur balance. Mais malheureusement
-    ce noeud bloc fait office de serveur central. On arrive néanmoins a
-    connecter les noeuds blocs entre eux. Ils vont s'envoyer des message de
-    maintient de connexion s'échanger les adresses des autres noeuds bloc, mais
-    n'arrivent pas à s'échanger des données relatives à la blockchain.
+    déconnecteront. Un noeud bloc est considéré comme mort au bout de 2 secondes
+    sans réponse. Le réseau de noeud bloc est résistants aux pannes, aux
+    déconnexions et dysfonctionnements de certains noeuds bloc. 
 
     \chapter{Utilisation}
 
-    \ \\ \\
+    \ \\
+    Les détails concernant l'intallation du programme sont disponible dans le fichier README.
+    \\
+
 
     \begin{lstlisting}
     $ ./bloc <compte> <adresse_IPv6|nom_de_domaine> <numero_de_port> [-v]
@@ -161,10 +155,14 @@ keywordstyle=\color{blue}
     particulièrement les détails de synchonisations entre server, et les
     émissions et réceptions de messages.
 
+    Si le prgramma \emph{bloc} est utilisé avec l'option -d (pour display)
+    celui ci se connectera au noeud bloc indiqué et récuperera la blockchain
+    pour l'afficher sur la sortie standard, puis quittera.
+
     \chapter{Format de messages}
 
 
-    Il y a cinq formats de messages:
+    Il y a quatre formats de messages envoyés via les sockets:
     \begin{itemize}
         \item Le format \emph{transaction\_t} est utilisé quand un participant ou un noeud bloc envoi un
             transaction à un autre noeud bloc.
@@ -222,150 +220,71 @@ keywordstyle=\color{blue}
                 \bitbox[lrb]{32}{4 octets: port} \\
             \end{bytefield}
 
-        \item Et le format \emph{block\_t} est utilisé quand un noeud
-            bloc envoi un block a un autre noeud bloc.
-            \\
-            \\
-
-            \begin{bytefield}{32}
-                \bitheader[lsb=0]{0,7,8,15,16,23,24,31,32} \\
-                \bitbox{16}{2 octets: en-tête} & \bitbox[lrt]{16}{} \\
-                \wordbox[lr]{1}{65 octets: hash de block précédant } \\
-                \skippedwords \\
-                \wordbox[lrb]{1}{} \\
-                \wordbox[lrt]{1}{8 octets: timstamp} \\
-                \wordbox[lrb]{1}{} \\
-                \wordbox[lrtb]{1}{4 octets: nonce} \\
-            \end{bytefield}
-
-
-
     \end{itemize}
+
+     \\ \\
+    Les autres informations et données échangés : les blockchain et les blocks,
+    le sont via la bibliothèque RCF.
 
 
     \chapter{Implémentation}
 
 
-    \section{Échanges client/server}
+    \section{Réseau et Distribution}
+
+    \subsection{Transmission des transactions}
+
+    Les transaction sont envoyés par un noeud participant à un noeud bloc via
+    des sockets. À la réception de cette requete le noeud bloc, va mettre en
+    attente la transaction avant minage du prochain block.
+
+    La demande d'un client de la balance de son compte à un noeud bloc se fait
+    via les sockets. À la réception d'une telle requete le noeud bloc, va calculer
+    la balance du compte, et la retourner un noeud participant via des socket.
 
 
-    \subsection{Participant}
+    \subsection{Échanges de block et de blockchain}
 
-    \begin{algorithm}
-        \begin{algorithmic}[H]
-            \STATE {ouverture de la socket vers le noaeud bloc}
-            \IF{le message est une transactinon}
-                \STATE {envoyer les données au noeud bloc}
-            \ELSIF{le message est une demande de balance}
-                \STATE {envoyer la requête au noeud block}
-                \STATE {attendre la réponse du noeud bloc pendant une seconde}
-                \STATE {afficher la réponse}
-            \ENDIF
-        \end{algorithmic}
-        \caption{Client: algorithme principal}
-        \label{alg:client} 
-    \end{algorithm}
+    Les noeuds blocs s'échangent des blocks via un appelle à une méthode d'une
+    interface partagé par un autre noeud bloc en utilisant la bibliothèque de
+    programmation distribué RCF.
+    Les échange de blockchain se font de la même manière.
 
 
-    \subsection{Noeud bloc}
-    
-    \begin{algorithm}
-        \begin{algorithmic}[H]
-            \WHILE{le server est ouvert}
-                \STATE{reception de message}
-                \IF{le message est une transaction}
-                    \STATE {mettre la transaction en attente}
-                    \IF{il y a suffisament de messages en attente}
-                        \STATE {miner un block}
-                        \STATE {ajouter la block a la blockchain}
-                        \STATE {envoyer le block au autres noeud bloc}
-                    \ENDIF
-                \ELSIF{le message est balance}
-                    \STATE {parcourir la blockchain}
-                    \STATE {envoyer le montant au client}
-                \ENDIF
-            \ENDWHILE
-        \end{algorithmic}
-        \caption{Server: réponse au client}
-        \label{alg:server} 
-    \end{algorithm}
+    \subsection{Connexion des noeuds bloc}
 
-    \newpage
+    Les noeud blocs se connectent entre eux via des sockets. Ils s'envoient
+    périodiquement des messages keep alive pour maintenir leur connection. 
 
-    \section{Connexion des servers}
+    \section{blobkchain}
 
-    \begin{algorithm}
-        \begin{algorithmic}[H]
-            \WHILE{le server est ouvert}
-                \STATE{reception de message}
-                \IF{le message est server connect}
-                    \STATE{lui envoyer tous les servers auquels on est déjà
-                    connecté}
-                    \STATE{l'enregistrer dans la table des servers connectés et
-                    initialiser la date de dernier keep\_alive}
-                    \STATE{lui envoyer un message connect}
-                \ELSIF{le message est keep}
-                    \STATE{mettre a jour la date de dernier keep\_alive de ce server}
-                \ELSIF{le message est share server}
-                    \STATE{ajouter le server dans la table des servers connus
-                    et initialiser la date de dernier keep\_alive}
-                    \STATE{lui envoyer un message connect}
-                \ENDIF
-            \ENDWHILE
-        \end{algorithmic}
-        \caption{Server thread1: connexion entre servers}
-        \label{alg:server} 
-    \end{algorithm}
-    
-    \begin{algorithm}
-        \begin{algorithmic}[H]
-            \WHILE{le server est ouvert}
-                \STATE{envoyer un message keep\_alive à tous les servers connectés}
-                \WHILE{parcours de chaque server de la table des servers
-                connus}
-                    \IF{la date de dernier keep\_alive est ancienne de plus de
-                    30 secondes}
-                        \STATE{supprimer le server de la table}
-                    \ENDIF
-                \ENDWHILE
-                \STATE attendre 5 secondes
-            \ENDWHILE
-        \end{algorithmic}
-        \caption{Server thread2: maintient des connections avec les servers}
-        \label{alg:server} 
-    \end{algorithm}
+    La Blockchain est un objet contenant un vecteur de Blocks, une récompense de minage,
+    une difficulté de minage et des transaction en attentes qui ne sont pas
+    encore dans la blockchain.
+    Un Block est un objet contenant le hash du block précédent, une date, un
+    nonce, un vecteur de Transactions, et un hash.
+    Une Transaction est un objet contenant un compte source, un comptee destination et un montant.
 
-    \chapter{Problèmes rencontrés et Conclusion}
+    A partir de 5 transactions en attente le noeud bloc va miner un block pour
+    l'ajouter dans la blockchain. Les transactions qu'il recevera en même temps
+    seront mis en attente pour le prochain bloc. Si un noeud bloc recoit 3 block
+    invalides de suite il va demander une nouvelle blockchain à une autre noeud bloc.
+    Le noeud bloc va comparer ces deux chaine jusqu'au moment ou elle divergent,
+    a partir de la le noeud bloc va mettre toutes les transactions effectués dans
+    les block suivant de la blockchain la plus courte dans les transactions en attente.
+    Il va ensuite pouvoir les miner à la suite de la nouvelle blockchain mise à jour.
 
 
-    Ce projet à été très intéressant à réaliser, je m'y suis pris très tard à
-    cause des nombreux autres travaux à réalier pendant ce semestre.
-    Au commencement du projet, j'ai tendé de l'implémenter un java en utilisant
-    la bibliothèque RM, je me suis rapidment confronté à un prolème car je ne
-    comprennais comment envoyer un block, ou encore moins la blockchain entière
-    à un autre noeud. Alors après avoir été resté bloqué de nombreuses heures,
-    je me suis dit que je vais le faire en C++, en utilisant les socket, en
-    m'inspirant du projet que j'avais réaliser le semestre dernier en cours en
-    réseaux. J'ai bien avancer pendant plusieurs jours jusqu'à être bloqué au
-    moment d'envoyer une blockchain entière, où la succession des messages à
-    envoyer, un block après l'autre suivit de toutes les transactions du block,
-    m'ont totalement empêché d'avancer. Je suis suis alors dit que j'avais fait
-    un mauvais choix en passant sur le C++ avec les socket. Je suis repassé sur
-    le projet en java/RMI et c'est à ce moment la que j'ai enfin réaliser
-    comment envoyer des objets simplement en les sérialisant. Mais à ce moment
-    la il était trop tard. Et je n'ai pas eu le temps de finir.
-    J'ai donc fait en quelque sorte deux projets en parallèle, un en C++ avec
-    les socket et un en java/RMI. Le projet le plus aboutit des deux est le
-    projet en C++, c'est celui que j'ai détaillé dans ce rapport.\\
-    \\
-    
-    Le sujet du projet était très intéréssant, mais je n'ai malheureusement pas
-    pu en explorer tous les recoins. Il m'a néanmoins appris énormément sur le
+
+    \chapter{Conclusion}
+
+
+    Le sujet du projet était très intéréssant, Il m'a  appris énormément sur le
     programmation distribué et les nombreux avantages des librairies de
-    programmation distribués contrairement aux socket qui sont bien plus
-    complexes à utiliser. Si je devais le refaire maintenant je le ferait d'une
-    toute autre manière. Même si les résultats ne sont pas la je ressort quand
-    même grandi de ce projet.
+    programmation distribués contrairement aux socket seuls qui sont bien plus
+    complexes à utiliser. Il a aussi été très intéressant car il m'a permis de
+    comprendre comment fontionne et une blockchain distribué et ca a été une
+    formidable opportinuté d'en programmer une.
     
     
 

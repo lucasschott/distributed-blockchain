@@ -65,59 +65,41 @@ class my_polygon
 // Adaption: implement iterator and range-extension, and register with Boost.Geometry
 
 // 1) implement iterator (const and non-const versions)
-template<typename MyPolygon>
+template <bool IsConst>
 struct custom_iterator : public boost::iterator_facade
                             <
-                                custom_iterator<MyPolygon>,
+                                custom_iterator<IsConst>,
                                 my_point,
                                 boost::random_access_traversal_tag,
-                                typename boost::mpl::if_
-                                    <
-                                        boost::is_const<MyPolygon>,
-                                        my_point const,
-                                        my_point
-                                    >::type&
+                                typename boost::geometry::add_const_if_c<IsConst, my_point>::type&
                             >
 {
     // Constructor for begin()
-    explicit custom_iterator(MyPolygon& polygon)
+    explicit custom_iterator(typename boost::geometry::add_const_if_c<IsConst, my_polygon>::type& polygon)
         : m_polygon(&polygon)
         , m_index(0)
     {}
 
     // Constructor for end()
-    explicit custom_iterator(bool, MyPolygon& polygon)
+    explicit custom_iterator(bool, typename boost::geometry::add_const_if_c<IsConst, my_polygon>::type& polygon)
         : m_polygon(&polygon)
         , m_index(polygon.point_count())
     {}
 
 
-    // Default constructor
-    explicit custom_iterator()
-        : m_polygon(NULL)
-        , m_index(-1)
-    {}
-
-    typedef typename boost::mpl::if_
-        <
-            boost::is_const<MyPolygon>,
-            my_point const,
-            my_point
-        >::type my_point_type;
 
 private:
     friend class boost::iterator_core_access;
 
-
     typedef boost::iterator_facade
         <
-            custom_iterator<MyPolygon>,
+            custom_iterator<IsConst>,
             my_point,
             boost::random_access_traversal_tag,
-            my_point_type&
+            typename boost::geometry::add_const_if_c<IsConst, my_point>::type&
         > facade;
 
-    MyPolygon* m_polygon;
+    typename boost::geometry::add_const_if_c<IsConst, my_polygon>::type* m_polygon;
     int m_index;
 
     bool equal(custom_iterator const& other) const
@@ -152,7 +134,7 @@ private:
     }
 
     // const and non-const dereference of this iterator
-    my_point_type& dereference() const
+    typename boost::geometry::add_const_if_c<IsConst, my_point>::type& dereference() const
     {
         return m_polygon->get_point(m_index);
     }
@@ -168,12 +150,12 @@ namespace boost
 {
     template<> struct range_mutable_iterator<my_polygon>
     {
-        typedef custom_iterator<my_polygon> type;
+        typedef custom_iterator<false> type;
     };
 
     template<> struct range_const_iterator<my_polygon>
     {
-        typedef custom_iterator<my_polygon const> type;
+        typedef custom_iterator<true> type;
     };
 
     // RangeEx
@@ -186,24 +168,24 @@ namespace boost
 
 
 // 2b) free-standing function for Boost.Range ADP
-inline custom_iterator<my_polygon> range_begin(my_polygon& polygon)
+inline custom_iterator<false> range_begin(my_polygon& polygon)
 {
-    return custom_iterator<my_polygon>(polygon);
+    return custom_iterator<false>(polygon);
 }
 
-inline custom_iterator<my_polygon const> range_begin(my_polygon const& polygon)
+inline custom_iterator<true> range_begin(my_polygon const& polygon)
 {
-    return custom_iterator<my_polygon const>(polygon);
+    return custom_iterator<true>(polygon);
 }
 
-inline custom_iterator<my_polygon> range_end(my_polygon& polygon)
+inline custom_iterator<false> range_end(my_polygon& polygon)
 {
-    return custom_iterator<my_polygon>(true, polygon);
+    return custom_iterator<false>(true, polygon);
 }
 
-inline custom_iterator<my_polygon const> range_end(my_polygon const& polygon)
+inline custom_iterator<true> range_end(my_polygon const& polygon)
 {
-    return custom_iterator<my_polygon const>(true, polygon);
+    return custom_iterator<true>(true, polygon);
 }
 
 
@@ -228,14 +210,6 @@ template<> struct resize<my_polygon>
     }
 };
 
-template<> struct clear<my_polygon>
-{
-    static inline void apply(my_polygon& polygon)
-    {
-        polygon.erase_all();
-    }
-};
-
 }}}
 
 
@@ -251,8 +225,8 @@ BOOST_GEOMETRY_REGISTER_RING(my_polygon)
 
 void walk_using_iterator(my_polygon const& polygon)
 {
-    for (custom_iterator<my_polygon const> it = custom_iterator<my_polygon const>(polygon);
-        it != custom_iterator<my_polygon const>(true, polygon);
+    for (custom_iterator<true> it = custom_iterator<true>(polygon);
+        it != custom_iterator<true>(true, polygon);
         ++it)
     {
         std::cout << boost::geometry::dsv(*it) << std::endl;

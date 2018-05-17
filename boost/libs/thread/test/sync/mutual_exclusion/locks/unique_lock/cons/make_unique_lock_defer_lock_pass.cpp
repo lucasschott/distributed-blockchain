@@ -19,6 +19,7 @@
 int main()
 {
   boost::mutex m;
+  m.lock();
 #if ! defined(BOOST_NO_CXX11_AUTO_DECLARATIONS)
   auto
 #else

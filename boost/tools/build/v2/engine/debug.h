@@ -1,19 +1,17 @@
 /*
- * Copyright 2005. Rene Rivera
- * Distributed under the Boost Software License, Version 1.0.
- * (See accompanying file LICENSE_1_0.txt or copy at
- * http://www.boost.org/LICENSE_1_0.txt)
- */
-
+    Copyright Rene Rivera 2005.
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt)
+*/
 #ifndef BJAM_DEBUG_H
 #define BJAM_DEBUG_H
 
 #include "constants.h"
-#include "object.h"
+#include "jam.h"
 #include <time.h>
 
 
-typedef struct profile_info
+struct profile_info
 {
     /* name of rule being called */
     OBJECT * name;
@@ -27,26 +25,28 @@ typedef struct profile_info
     unsigned long stack_count;
     /* bytes of memory allocated by the call */
     unsigned long memory;
-} profile_info;
+};
+typedef struct profile_info profile_info;
 
-typedef struct profile_frame
+struct profile_frame
 {
     /* permanent storage where data accumulates */
-    profile_info * info;
+    profile_info* info;
     /* overhead for profiling in this call */
     clock_t overhead;
     /* time of last entry to rule */
     clock_t entry_time;
     /* stack frame of caller */
-    struct profile_frame * caller;
+    struct profile_frame* caller;
     /* time spent in subrules */
     clock_t subrules;
-} profile_frame;
+};
+typedef struct profile_frame profile_frame;
 
-profile_frame * profile_init( OBJECT * rulename, profile_frame * );
-void profile_enter( OBJECT * rulename, profile_frame * );
+profile_frame * profile_init( OBJECT * rulename, profile_frame * frame );
+void profile_enter( OBJECT * rulename, profile_frame * frame );
 void profile_memory( long mem );
-void profile_exit( profile_frame * );
+void profile_exit( profile_frame * frame );
 void profile_dump();
 
 #define PROFILE_ENTER( scope ) profile_frame PROF_ ## scope, *PROF_ ## scope ## _p = profile_init( constant_ ## scope, &PROF_ ## scope )

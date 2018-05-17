@@ -9,8 +9,7 @@
 #include <boost/config.hpp>
 #include <boost/algorithm/clamp.hpp>
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 namespace ba = boost::algorithm;
 
@@ -206,7 +205,7 @@ void test_int_range ()
     BOOST_CHECK ( std::equal ( b_e(junk), outputs ));
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
     test_ints ();
     test_floats ();
@@ -215,4 +214,5 @@ BOOST_AUTO_TEST_CASE( test_main )
     test_int_range ();
 //    test_float_range ();
 //    test_custom_range ();
+    return 0;
 }

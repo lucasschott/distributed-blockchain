@@ -177,7 +177,7 @@ struct gmp_float_imp
 
       int e;
       long double f, term;
-      mpf_set_ui(m_data, 0u);
+      mpf_init_set_ui(m_data, 0u);
 
       f = frexp(a, &e);
 
@@ -1015,9 +1015,8 @@ struct gmp_int
    explicit gmp_int(const gmp_rational& o);
    gmp_int& operator = (const gmp_int& o)
    {
-      if(m_data[0]._mp_d == 0)
-         mpz_init(this->m_data);
-      mpz_set(m_data, o.m_data);
+      if(o.m_data[0]._mp_d)
+         mpz_set(m_data, o.m_data);
       return *this;
    }
 #ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
@@ -1225,27 +1224,27 @@ struct gmp_int
 
       return s;
    }
-   ~gmp_int() BOOST_NOEXCEPT
+   ~gmp_int()
    {
       if(m_data[0]._mp_d)
          mpz_clear(m_data);
    }
-   void negate() BOOST_NOEXCEPT
+   void negate()
    {
       BOOST_ASSERT(m_data[0]._mp_d);
       mpz_neg(m_data, m_data);
    }
-   int compare(const gmp_int& o)const BOOST_NOEXCEPT
+   int compare(const gmp_int& o)const
    {
       BOOST_ASSERT(m_data[0]._mp_d && o.m_data[0]._mp_d);
       return mpz_cmp(m_data, o.m_data);
    }
-   int compare(long i)const BOOST_NOEXCEPT
+   int compare(long i)const
    {
       BOOST_ASSERT(m_data[0]._mp_d);
       return mpz_cmp_si(m_data, i);
    }
-   int compare(unsigned long i)const BOOST_NOEXCEPT
+   int compare(unsigned long i)const
    {
       BOOST_ASSERT(m_data[0]._mp_d);
       return mpz_cmp_ui(m_data, i);
@@ -1257,12 +1256,12 @@ struct gmp_int
       d = v;
       return compare(d);
    }
-   mpz_t& data() BOOST_NOEXCEPT
+   mpz_t& data()
    {
       BOOST_ASSERT(m_data[0]._mp_d);
       return m_data;
    }
-   const mpz_t& data()const BOOST_NOEXCEPT
+   const mpz_t& data()const
    {
       BOOST_ASSERT(m_data[0]._mp_d);
       return m_data;
@@ -1592,11 +1591,6 @@ inline typename enable_if_c<is_signed<I>::value && ((sizeof(I) <= sizeof(long)))
    mpz_lcm_ui(result.data(), a.data(), std::abs(b));
 }
 
-inline void eval_integer_sqrt(gmp_int& s, gmp_int& r, const gmp_int& x)
-{
-   mpz_sqrtrem(s.data(), r.data(), x.data());
-}
-
 inline unsigned eval_lsb(const gmp_int& val)
 {
    int c = eval_get_sign(val);
@@ -1609,20 +1603,6 @@ inline unsigned eval_lsb(const gmp_int& val)
       BOOST_THROW_EXCEPTION(std::range_error("Testing individual bits in negative values is not supported - results are undefined."));
    }
    return mpz_scan1(val.data(), 0);
-}
-
-inline unsigned eval_msb(const gmp_int& val)
-{
-   int c = eval_get_sign(val);
-   if(c == 0)
-   {
-      BOOST_THROW_EXCEPTION(std::range_error("No bits were set in the operand."));
-   }
-   if(c < 0)
-   {
-      BOOST_THROW_EXCEPTION(std::range_error("Testing individual bits in negative values is not supported - results are undefined."));
-   }
-   return mpz_sizeinbase(val.data(), 2) - 1;
 }
 
 inline bool eval_bit_test(const gmp_int& val, unsigned index)
@@ -1748,9 +1728,8 @@ struct gmp_rational
    }
    gmp_rational& operator = (const gmp_rational& o)
    {
-      if(m_data[0]._mp_den._mp_d == 0)
-         mpq_init(m_data);
-      mpq_set(m_data, o.m_data);
+      if(o.m_data[0]._mp_num._mp_d)
+         mpq_set(m_data, o.m_data);
       return *this;
    }
 #ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
@@ -2287,6 +2266,7 @@ public:
       {
          value.first = true;
          value.second = 1;
+         mpf_div_2exp(value.second.backend().data(), value.second.backend().data(), digits);
       }
       return value.second;
    }
@@ -2308,7 +2288,7 @@ public:
    BOOST_STATIC_CONSTEXPR bool is_modulo = false;
    BOOST_STATIC_CONSTEXPR bool traps = true;
    BOOST_STATIC_CONSTEXPR bool tinyness_before = false;
-   BOOST_STATIC_CONSTEXPR float_round_style round_style = round_indeterminate;
+   BOOST_STATIC_CONSTEXPR float_round_style round_style = round_to_nearest;
 
 private:
    struct data_initializer
@@ -2364,7 +2344,7 @@ public:
    BOOST_STATIC_CONSTEXPR bool is_modulo = false;
    BOOST_STATIC_CONSTEXPR bool traps = false;
    BOOST_STATIC_CONSTEXPR bool tinyness_before = false;
-   BOOST_STATIC_CONSTEXPR float_round_style round_style = round_indeterminate;
+   BOOST_STATIC_CONSTEXPR float_round_style round_style = round_toward_zero;
 };
 
 #ifndef BOOST_NO_INCLASS_MEMBER_INITIALIZATION

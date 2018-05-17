@@ -9,9 +9,7 @@
 
 #include <boost/config.hpp>
 #include <boost/algorithm/cxx11/iota.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <iostream>
 #include <string>
@@ -74,7 +72,8 @@ void test_ints () {
     }
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
   test_ints ();
+  return 0;
 }

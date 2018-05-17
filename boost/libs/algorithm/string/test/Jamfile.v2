@@ -9,63 +9,58 @@
 
 import testing ;
 
-alias unit_test_framework
-    : # sources
-        /boost//unit_test_framework
-    ;        
-
 test-suite algorithm/string
     : [ run 
-            trim_test.cpp unit_test_framework
+            trim_test.cpp
           : :
             :
             : trim
         ]
       [ run 
-            conv_test.cpp unit_test_framework
+            conv_test.cpp
           : :
             :
             : conv
         ]
       [ run 
-            predicate_test.cpp unit_test_framework
+            predicate_test.cpp
           : :
             :
             : predicate
         ]
       [ run 
-            find_test.cpp unit_test_framework
+            find_test.cpp
           : :
             :
             : find
         ]
       [ run
-            split_test.cpp unit_test_framework
+            split_test.cpp
           : :
             :
             : split
         ]
       [ run
-            join_test.cpp unit_test_framework
+            join_test.cpp
           : :
             :
             : join
         ]
       [ run 
-            replace_test.cpp unit_test_framework
+            replace_test.cpp
           : :
             :
             : replace
         ]
       [ run 
-            regex_test.cpp unit_test_framework
+            regex_test.cpp
             ../../../regex/build//boost_regex
           : :
             :   
             : regex
         ]
       [ run 
-            find_format_test.cpp unit_test_framework
+            find_format_test.cpp
           : :
             :   
             : find_format

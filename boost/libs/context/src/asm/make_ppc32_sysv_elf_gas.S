@@ -78,7 +78,7 @@ make_fcontext:
 
     # call align_stack, R3 contains address at 16 byte boundary after return
     # == pointer to fcontext_t and address of context stack
-    clrrwi  %r3, %r3, 4
+    rlwinm  %r3, %r3, 0, 0, 27
 
     stw     %r0, 92(%r3)        # save address of context stack (base) in fcontext_t
     stw     %r4, 96(%r3)        # save context stack size in fcontext_t
@@ -109,6 +109,3 @@ finish:
     li      %r3,  0             # exit code is zero
     bl      _exit@plt           # exit application
 .size make_fcontext, .-make_fcontext
-
-/* Mark that we don't need executable stack.  */
-.section .note.GNU-stack,"",%progbits

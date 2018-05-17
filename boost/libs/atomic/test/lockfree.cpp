@@ -11,7 +11,6 @@
 
 #include <iostream>
 
-#include <boost/config.hpp>
 #include <boost/atomic.hpp>
 #include <boost/test/minimal.hpp>
 
@@ -44,12 +43,7 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_SHORT_LOCK_FREE 2
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
-#if defined(BOOST_ATOMIC_X86_HAS_CMPXCHG8B)
-#define EXPECT_LLONG_LOCK_FREE 2
-#else
-#define EXPECT_LLONG_LOCK_FREE 0
-#endif
-#define EXPECT_INT128_LOCK_FREE 0
+#define EXPECT_LLONG_LOCK_FREE 1
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -60,11 +54,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
 #define EXPECT_LLONG_LOCK_FREE 2
-#if defined(BOOST_ATOMIC_X86_HAS_CMPXCHG16B) && defined(BOOST_HAS_INT128)
-#define EXPECT_INT128_LOCK_FREE 2
-#else
-#define EXPECT_INT128_LOCK_FREE 0
-#endif
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -82,7 +71,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #else
 #define EXPECT_LLONG_LOCK_FREE 0
 #endif
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -96,7 +84,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
 #define EXPECT_LLONG_LOCK_FREE 2
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -109,7 +96,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
 #define EXPECT_LLONG_LOCK_FREE 0
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -120,7 +106,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
 #define EXPECT_LLONG_LOCK_FREE 0
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -131,7 +116,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
 #define EXPECT_LLONG_LOCK_FREE 0
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -141,12 +125,11 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_SHORT_LOCK_FREE 2
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE 2
-#if defined(_WIN64) || defined(BOOST_ATOMIC_X86_HAS_CMPXCHG8B) || defined(_M_AMD64) || defined(_M_IA64)
+#if defined(_WIN64)
 #define EXPECT_LLONG_LOCK_FREE 2
 #else
 #define EXPECT_LLONG_LOCK_FREE 0
 #endif
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 2
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -157,7 +140,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 2
 #define EXPECT_LONG_LOCK_FREE (sizeof(long) <= 4 ? 2 : 0)
 #define EXPECT_LLONG_LOCK_FREE (sizeof(long long) <= 4 ? 2 : 0)
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE (sizeof(void *) <= 4 ? 2 : 0)
 #define EXPECT_BOOL_LOCK_FREE 2
 
@@ -168,7 +150,6 @@ verify_lock_free(const char * type_name, int lock_free_macro_val, int lock_free_
 #define EXPECT_INT_LOCK_FREE 0
 #define EXPECT_LONG_LOCK_FREE 0
 #define EXPECT_LLONG_LOCK_FREE 0
-#define EXPECT_INT128_LOCK_FREE 0
 #define EXPECT_POINTER_LOCK_FREE 0
 #define EXPECT_BOOL_LOCK_FREE 0
 
@@ -183,21 +164,18 @@ int test_main(int, char *[])
 #ifdef BOOST_HAS_LONG_LONG
     verify_lock_free<long long>("long long", BOOST_ATOMIC_LLONG_LOCK_FREE, EXPECT_LLONG_LOCK_FREE);
 #endif
-#ifdef BOOST_HAS_INT128
-    verify_lock_free<boost::int128_type>("int128", BOOST_ATOMIC_INT128_LOCK_FREE, EXPECT_INT128_LOCK_FREE);
-#endif
     verify_lock_free<void *>("void *", BOOST_ATOMIC_POINTER_LOCK_FREE, EXPECT_SHORT_LOCK_FREE);
     verify_lock_free<bool>("bool", BOOST_ATOMIC_BOOL_LOCK_FREE, EXPECT_BOOL_LOCK_FREE);
 
     bool any_lock_free =
-        BOOST_ATOMIC_CHAR_LOCK_FREE > 0 ||
-        BOOST_ATOMIC_SHORT_LOCK_FREE > 0 ||
-        BOOST_ATOMIC_INT_LOCK_FREE > 0 ||
-        BOOST_ATOMIC_LONG_LOCK_FREE > 0 ||
-        BOOST_ATOMIC_LLONG_LOCK_FREE > 0 ||
-        BOOST_ATOMIC_BOOL_LOCK_FREE > 0;
+        BOOST_ATOMIC_CHAR_LOCK_FREE ||
+        BOOST_ATOMIC_SHORT_LOCK_FREE ||
+        BOOST_ATOMIC_INT_LOCK_FREE ||
+        BOOST_ATOMIC_LONG_LOCK_FREE ||
+        BOOST_ATOMIC_LLONG_LOCK_FREE ||
+        BOOST_ATOMIC_BOOL_LOCK_FREE;
 
-    BOOST_CHECK(!any_lock_free || BOOST_ATOMIC_THREAD_FENCE > 0);
+    BOOST_CHECK(!any_lock_free || BOOST_ATOMIC_THREAD_FENCE);
 
     return 0;
 }

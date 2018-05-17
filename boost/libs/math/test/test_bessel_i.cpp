@@ -75,13 +75,6 @@ void expected_results()
       ".*", 400, 200);               // test function
 
    add_expected_result(
-      "GNU.*",                       // compiler
-      ".*",                          // stdlib
-      "Win32.*",                     // platform
-      largest_type,                  // test type(s)
-      ".*Random.*",                  // test data group
-      ".*", 400, 200);               // test function
-   add_expected_result(
       "GNU.*",                          // compiler
       ".*",                          // stdlib
       "Win32.*",                          // platform
@@ -94,7 +87,7 @@ void expected_results()
       ".*",                          // platform
       largest_type,                  // test type(s)
       ".*",                          // test data group
-      ".*", 20, 10);                 // test function
+      ".*", 15, 10);                 // test function
    //
    // Set error rates a little higher for real_concept - 
    // now that we use a series approximation for small z
@@ -117,7 +110,7 @@ void expected_results()
       << BOOST_STDLIB << ", " << BOOST_PLATFORM << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
 #ifdef TEST_GSL
    gsl_set_error_handler_off();
@@ -140,6 +133,7 @@ BOOST_AUTO_TEST_CASE( test_main )
       "not available at all, or because they are too inaccurate for these tests "
       "to pass.</note>" << std::cout;
 #endif
+   return 0;
 }
 
 

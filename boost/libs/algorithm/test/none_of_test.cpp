@@ -9,9 +9,7 @@
 
 #include <boost/config.hpp>
 #include <boost/algorithm/cxx11/none_of.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <functional>
 #include <vector>
@@ -91,7 +89,8 @@ void test_none()
     BOOST_CHECK (!ba::none_of       ( li.begin(), l_iter, is_<int> (  5 )));
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
   test_none();
+  return 0;
 }

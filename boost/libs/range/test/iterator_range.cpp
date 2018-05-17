@@ -101,11 +101,6 @@ void check_iterator_range()
     BOOST_CHECK( rrr == str );
 
     check_reference_type();
-    
-    // Check that an iterator range can be instantiated with
-    // a pointer to an array as an iterator.
-    int arr[2][2];
-    boost::make_iterator_range(arr, arr + 2);
 }
 
 namespace iterator_range_test_detail

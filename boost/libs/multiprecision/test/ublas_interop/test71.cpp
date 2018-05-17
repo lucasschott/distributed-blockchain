@@ -9,10 +9,6 @@
 //  GeNeSys mbH & Co. KG in producing this work.
 //
 
-//
-// This file fails to compile - appears to be a known uBlas issue :-(
-//
-
 #include "test7.hpp"
 
 // Test vector expression templates

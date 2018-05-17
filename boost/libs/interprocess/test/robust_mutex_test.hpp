@@ -16,7 +16,6 @@
 #include <cstdlib> //std::system
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
-#include <boost/interprocess/sync/spin/wait.hpp>
 #include "get_process_id_name.hpp"
 #include "mutex_test_template.hpp"
 #include <iostream>
@@ -67,9 +66,8 @@ int robust_mutex_test(int argc, char *argv[])
          return 1;
 
       //Wait until child locks the mutexes and dies
-      spin_wait swait;
       while(!*go_ahead){
-         swait.yield();
+         ipcdetail::thread_yield();
       }
 
       std::cout << "... recovering mutex[0]" << std::endl;
@@ -165,9 +163,8 @@ int robust_mutex_test(int argc, char *argv[])
          }
 
          //Wait until child locks the 2nd mutex and dies
-         spin_wait swait;
          while(!*go_ahead2){
-            swait.yield();
+            ipcdetail::thread_yield();
          }
 
          //Done, now try to lock number 3 to see if robust

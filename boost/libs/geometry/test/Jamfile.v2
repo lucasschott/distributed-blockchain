@@ -30,3 +30,4 @@ build-project io ;
 build-project util ;
 build-project views ;
 build-project multi ;
+#build-project domains ;

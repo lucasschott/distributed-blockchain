@@ -1,6 +1,6 @@
 //  lock-free freelist
 //
-//  Copyright (C) 2008-2013 Tim Blechmann
+//  Copyright (C) 2008, 2009, 2011 Tim Blechmann
 //
 //  Distributed under the Boost Software License, Version 1.0. (See
 //  accompanying file LICENSE_1_0.txt or copy at
@@ -9,7 +9,6 @@
 #ifndef BOOST_LOCKFREE_FREELIST_HPP_INCLUDED
 #define BOOST_LOCKFREE_FREELIST_HPP_INCLUDED
 
-#include <limits>
 #include <memory>
 
 #include <boost/array.hpp>
@@ -21,12 +20,6 @@
 #include <boost/lockfree/detail/atomic.hpp>
 #include <boost/lockfree/detail/parameter.hpp>
 #include <boost/lockfree/detail/tagged_ptr.hpp>
-
-#if defined(_MSC_VER)
-#pragma warning(push)
-#pragma warning(disable: 4100) // unreferenced formal parameter
-#pragma warning(disable: 4127) // conditional expression is constant
-#endif
 
 namespace boost    {
 namespace lockfree {
@@ -116,7 +109,7 @@ public:
 
     ~freelist_stack(void)
     {
-        tagged_node_ptr current = pool_.load();
+        tagged_node_ptr current (pool_);
 
         while (current) {
             freelist_node * current_ptr = current.get_ptr();
@@ -181,7 +174,7 @@ private:
             }
 
             freelist_node * new_pool_ptr = old_pool->next.get_ptr();
-            tagged_node_ptr new_pool (new_pool_ptr, old_pool.get_next_tag());
+            tagged_node_ptr new_pool (new_pool_ptr, old_pool.get_tag() + 1);
 
             if (pool_.compare_exchange_weak(old_pool, new_pool)) {
                 void * ptr = old_pool.get_ptr();
@@ -203,7 +196,7 @@ private:
         }
 
         freelist_node * new_pool_ptr = old_pool->next.get_ptr();
-        tagged_node_ptr new_pool (new_pool_ptr, old_pool.get_next_tag());
+        tagged_node_ptr new_pool (new_pool_ptr, old_pool.get_tag() + 1);
 
         pool_.store(new_pool, memory_order_relaxed);
         void * ptr = old_pool.get_ptr();
@@ -294,12 +287,6 @@ public:
         return tag;
     }
 
-    tag_t get_next_tag() const
-    {
-        tag_t next = (get_tag() + 1) & (std::numeric_limits<tag_t>::max)();
-        return next;
-    }
-
     void set_tag(tag_t t)
     {
         tag = t;
@@ -309,11 +296,6 @@ public:
     bool operator==(tagged_index const & rhs) const
     {
         return (index == rhs.index) && (tag == rhs.tag);
-    }
-
-    bool operator!=(tagged_index const & rhs) const
-    {
-        return !operator==(rhs);
     }
 
 protected:
@@ -332,7 +314,7 @@ struct compiletime_sized_freelist_storage
 
     // unused ... only for API purposes
     template <typename Allocator>
-    compiletime_sized_freelist_storage(Allocator const & /* alloc */, std::size_t /* count */)
+    compiletime_sized_freelist_storage(Allocator const & alloc, std::size_t count)
     {}
 
     T * nodes(void) const
@@ -541,7 +523,7 @@ private:
             T * old_node = NodeStorage::nodes() + index;
             tagged_index * next_index = reinterpret_cast<tagged_index*>(old_node);
 
-            tagged_index new_pool(next_index->get_index(), old_pool.get_next_tag());
+            tagged_index new_pool(next_index->get_index(), old_pool.get_tag() + 1);
 
             if (pool_.compare_exchange_weak(old_pool, new_pool))
                 return old_pool.get_index();
@@ -559,7 +541,7 @@ private:
         T * old_node = NodeStorage::nodes() + index;
         tagged_index * next_index = reinterpret_cast<tagged_index*>(old_node);
 
-        tagged_index new_pool(next_index->get_index(), old_pool.get_next_tag());
+        tagged_index new_pool(next_index->get_index(), old_pool.get_tag() + 1);
 
         pool_.store(new_pool, memory_order_relaxed);
         return old_pool.get_index();
@@ -639,10 +621,5 @@ struct select_tagged_handle
 } /* namespace detail */
 } /* namespace lockfree */
 } /* namespace boost */
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
 
 #endif /* BOOST_LOCKFREE_FREELIST_HPP_INCLUDED */

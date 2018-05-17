@@ -11,7 +11,7 @@
 #ifndef BOOST_CONTAINER_DUMMY_TEST_ALLOCATOR_HPP
 #define BOOST_CONTAINER_DUMMY_TEST_ALLOCATOR_HPP
 
-#if (defined _MSC_VER)
+#if (defined _MSC_VER) && (_MSC_VER >= 1200)
 #  pragma once
 #endif
 
@@ -26,11 +26,11 @@
 #include <boost/container/detail/mpl.hpp>
 #include <boost/container/detail/version_type.hpp>
 #include <boost/container/detail/multiallocation_chain.hpp>
-#include <boost/container/throw_exception.hpp>
 #include <boost/move/utility.hpp>
 #include <memory>
 #include <algorithm>
 #include <cstddef>
+#include <stdexcept>
 #include <cassert>
 
 //!\file
@@ -314,20 +314,15 @@ class propagation_test_allocator
    friend bool operator!=(const propagation_test_allocator &, const propagation_test_allocator &)
    {  return false;  }
 
-   void swap(propagation_test_allocator &r)
-   {
-      ++this->swaps_; ++r.swaps_;
-      boost::container::swap_dispatch(this->id_, r.id_);
-      boost::container::swap_dispatch(this->ctr_copies_, r.ctr_copies_);
-      boost::container::swap_dispatch(this->ctr_moves_, r.ctr_moves_);
-      boost::container::swap_dispatch(this->assign_copies_, r.assign_copies_);
-      boost::container::swap_dispatch(this->assign_moves_, r.assign_moves_);
-      boost::container::swap_dispatch(this->swaps_, r.swaps_);
-   }
-
    friend void swap(propagation_test_allocator &l, propagation_test_allocator &r)
    {
-      l.swap(r);
+      ++l.swaps_; ++r.swaps_;
+      container_detail::do_swap(l.id_, r.id_);
+      container_detail::do_swap(l.ctr_copies_, r.ctr_copies_);
+      container_detail::do_swap(l.ctr_moves_, r.ctr_moves_);
+      container_detail::do_swap(l.assign_copies_, r.assign_copies_);
+      container_detail::do_swap(l.assign_moves_, r.assign_moves_);
+      container_detail::do_swap(l.swaps_, r.swaps_);
    }
 
    unsigned int id_;

@@ -10,8 +10,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 
 // Include unit test framework
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <iostream>
@@ -88,7 +87,9 @@ void conv_test()
 }
 
 // test main 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int, char*[] )
 {
     conv_test();
+    
+    return 0;
 }

@@ -5,7 +5,6 @@
 
 #include <iostream>
 #include <boost/thread.hpp>
-#include <boost/thread/thread_only.hpp>
 #include <boost/optional.hpp>
 #include <boost/detail/lightweight_test.hpp>
 

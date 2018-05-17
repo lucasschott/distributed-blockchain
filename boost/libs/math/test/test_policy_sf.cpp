@@ -3,8 +3,7 @@
 //  Boost Software License, Version 1.0. (See accompanying file
 //  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/test_exec_monitor.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <boost/math/special_functions.hpp>
 
@@ -38,7 +37,7 @@ namespace test{
 #undef isfinite
 #undef isnan
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    int i;
    TEST_POLICY_SF(tgamma(3.0));
@@ -131,7 +130,7 @@ BOOST_AUTO_TEST_CASE( test_main )
    TEST_POLICY_SF(sph_bessel(3, 5));
    TEST_POLICY_SF(sph_neumann(3, 5.0));
    TEST_POLICY_SF(sph_neumann(3, 5));
-   
+   return 0;
 }
 
 

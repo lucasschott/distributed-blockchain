@@ -17,6 +17,7 @@ template <typename Graph>
 void test_graph_nonloop()
 {
     typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef typename graph_traits<Graph>::edge_descriptor Edge;
 
     // Build a graph with 1 edge and turn it into a loop.
     Graph g(5);
@@ -35,6 +36,7 @@ template <typename Graph>
 void test_multigraph_nonloop()
 {
     typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef typename graph_traits<Graph>::edge_descriptor Edge;
 
     // Build a graph with 1 edge and turn it into a loop.
     Graph g(5);
@@ -53,6 +55,7 @@ template <typename Graph>
 void test_graph_loop()
 {
     typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef typename graph_traits<Graph>::edge_descriptor Edge;
 
     Graph g(5);
     Vertex v = *next(vertices(g).first, 2);
@@ -67,6 +70,7 @@ template <typename Graph>
 void test_multigraph_loop()
 {
     typedef typename graph_traits<Graph>::vertex_descriptor Vertex;
+    typedef typename graph_traits<Graph>::edge_descriptor Edge;
 
     Graph g(5);
     Vertex v = *next(vertices(g).first, 2);

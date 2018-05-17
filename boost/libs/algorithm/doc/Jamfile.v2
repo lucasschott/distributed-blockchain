@@ -18,11 +18,7 @@ using boostbook ;
 
 doxygen autodoc 
     : 
-        [ glob ../../../boost/algorithm/*.hpp 
-               ../../../boost/algorithm/searching/*.hpp
-               ../../../boost/algorithm/cxx11/*.hpp
-               ../../../boost/algorithm/cxx14/*.hpp
-        ]
+        [ glob ../../../boost/algorithm/*.hpp ../../../boost/algorithm/searching/*.hpp ]
     : 
        <doxygen:param>"PREDEFINED=\"BOOST_ALGORITHM_DOXYGEN=1\""
        <doxygen:param>WARNINGS=YES # Default NO, but useful to see warnings, especially in a logfile.

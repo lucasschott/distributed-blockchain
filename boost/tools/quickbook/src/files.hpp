@@ -14,10 +14,8 @@
 #include <string>
 #include <boost/filesystem/path.hpp>
 #include <boost/intrusive_ptr.hpp>
-#include <boost/utility/string_ref.hpp>
 #include <stdexcept>
 #include <cassert>
-#include <iosfwd>
 
 namespace quickbook {
 
@@ -33,13 +31,6 @@ namespace quickbook {
 
         int line;
         int column;
-        
-        bool operator==(file_position const& other) const
-        {
-            return line == other.line && column == other.column;
-        }
-        
-        friend std::ostream& operator<<(std::ostream&, file_position const&);
     };
 
     struct file
@@ -50,23 +41,21 @@ namespace quickbook {
         file(file const&);
     public:
         fs::path const path;
-        std::string source_;
+        std::string source;
         bool is_code_snippets;
     private:
         unsigned qbk_version;
         unsigned ref_count;
     public:
-        boost::string_ref source() const { return source_; }
 
-        file(fs::path const& path, boost::string_ref source,
+        file(fs::path const& path, std::string const& source,
                 unsigned qbk_version) :
-            path(path), source_(source.begin(), source.end()), is_code_snippets(false),
+            path(path), source(source), is_code_snippets(false),
             qbk_version(qbk_version), ref_count(0)
         {}
 
-        file(file const& f, boost::string_ref source) :
-            path(f.path), source_(source.begin(), source.end()),
-            is_code_snippets(f.is_code_snippets),
+        file(file const& f, std::string const& source) :
+            path(f.path), source(source), is_code_snippets(f.is_code_snippets),
             qbk_version(f.qbk_version), ref_count(0)
         {}
 
@@ -87,7 +76,7 @@ namespace quickbook {
             qbk_version = v;
         }
 
-        virtual file_position position_of(boost::string_ref::const_iterator) const;
+        virtual file_position position_of(std::string::const_iterator) const;
 
         friend void intrusive_ptr_add_ref(file* ptr) { ++ptr->ref_count; }
 
@@ -112,8 +101,8 @@ namespace quickbook {
 
     struct mapped_file_builder
     {
-        typedef boost::string_ref::const_iterator iterator;
-        typedef boost::string_ref::size_type pos;
+        typedef std::string::const_iterator iterator;
+        typedef std::string::size_type pos;
 
         mapped_file_builder();
         ~mapped_file_builder();
@@ -125,11 +114,12 @@ namespace quickbook {
         bool empty() const;
         pos get_pos() const;
 
-        void add_at_pos(boost::string_ref, iterator);
-        void add(boost::string_ref);
+        void add(char const*, iterator);
+        void add(std::string const&, iterator);
+        void add(iterator, iterator);
         void add(mapped_file_builder const&);
         void add(mapped_file_builder const&, pos, pos);
-        void unindent_and_add(boost::string_ref);
+        void unindent_and_add(iterator, iterator);
     private:
         mapped_file_builder_data* data;
 

@@ -38,5 +38,4 @@ int main()
   sig();  // prints nothing, world slot has disconnected itself
 
   return 0;
-}
-
+};

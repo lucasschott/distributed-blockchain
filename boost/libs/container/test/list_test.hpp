@@ -148,7 +148,7 @@ int list_test (bool copied_allocators_equal = true)
    const int max = 100;
    typedef list_push_data_function<DoublyLinked> push_data_t;
 
-   BOOST_TRY{
+   try{
       MyBoostList *boostlist = new MyBoostList;
       MyStdList *stdlist = new MyStdList;
 
@@ -338,10 +338,9 @@ int list_test (bool copied_allocators_equal = true)
       delete boostlist;
       delete stdlist;
    }
-   BOOST_CATCH(...){
-      BOOST_RETHROW;
+   catch(...){
+      throw;
    }
-   BOOST_CATCH_END
    return 0;
 }
 

@@ -58,8 +58,8 @@ namespace quickbook
     public:
         grammar command_line_macro;
         grammar inline_phrase;
-        grammar phrase_start;
-        grammar block_start;
+        grammar phrase;
+        grammar block;
         grammar doc_info;
 
         quickbook_grammar(quickbook::state&);

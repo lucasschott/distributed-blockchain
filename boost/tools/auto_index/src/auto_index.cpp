@@ -94,8 +94,6 @@ const std::string* get_current_block_id(node_id const* id)
 {
    while((id->id == 0) && (id->prev))
       id = id->prev;
-   if(!id->id)
-      BOOST_THROW_EXCEPTION(std::runtime_error("Current XML block has no enclosing ID: XML is not valid Boostbook?"));
    return id->id;
 }
 //
@@ -764,7 +762,6 @@ int main(int argc, char* argv[])
    catch(boost::exception& e)
    {
       std::cerr << diagnostic_information(e);
-      return 1;
    }
    catch(const std::exception& e)
    {

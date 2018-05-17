@@ -89,7 +89,7 @@ void test_spots(T, const char* t)
    BOOST_CHECK_CLOSE(::boost::math::digamma(static_cast<T>(-1.5)), static_cast<T>(0.70315664064524318722569033366791109947350706200623L), tolerance);
 }
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    BOOST_MATH_CONTROL_FP;
    test_spots(0.0F, "float");
@@ -114,6 +114,7 @@ BOOST_AUTO_TEST_CASE( test_main )
       "not available at all, or because they are too inaccurate for these tests "
       "to pass.</note>" << std::cout;
 #endif
+   return 0;
 }
 
 

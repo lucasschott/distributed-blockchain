@@ -29,7 +29,6 @@
 #include "emplace_test.hpp"
 #include "propagate_allocator_test.hpp"
 #include "vector_test.hpp"
-#include <boost/detail/no_exceptions_support.hpp>
 
 using namespace boost::container;
 
@@ -144,7 +143,7 @@ bool do_test()
    typedef deque<IntType>  MyCntDeque;
    typedef std::deque<int> MyStdDeque;
    const int max = 100;
-   BOOST_TRY{
+   try{
       //Shared memory allocator must be always be initialized
       //since it has no default constructor
       MyCntDeque *cntdeque = new MyCntDeque;
@@ -205,20 +204,6 @@ bool do_test()
                            ,boost::make_move_iterator(&aux_vect[0])
                            ,boost::make_move_iterator(aux_vect + 50));
          stddeque->insert(stddeque->end(), aux_vect2, aux_vect2 + 50);
-         if(!test::CheckEqualContainers(cntdeque, stddeque)) return false;
-
-         for(int i = 0; i < 50; ++i){
-            IntType move_me (i);
-            aux_vect[i] = boost::move(move_me);
-         }
-         for(int i = 0; i < 50; ++i){
-            aux_vect2[i] = i;
-         }
-
-         cntdeque->insert(cntdeque->begin()+cntdeque->size()
-                           ,boost::make_move_iterator(&aux_vect[0])
-                           ,boost::make_move_iterator(aux_vect + 50));
-         stddeque->insert(stddeque->begin()+stddeque->size(), aux_vect2, aux_vect2 + 50);
          if(!test::CheckEqualContainers(cntdeque, stddeque)) return false;
 
          for(int i = 0, j = static_cast<int>(cntdeque->size()); i < j; ++i){
@@ -283,13 +268,10 @@ bool do_test()
       delete cntdeque;
       delete stddeque;
    }
-   BOOST_CATCH(std::exception &ex){
-      #ifndef BOOST_NO_EXCEPTIONS
+   catch(std::exception &ex){
       std::cout << ex.what() << std::endl;
-      #endif
       return false;
    }
-   BOOST_CATCH_END
   
    std::cout << std::endl << "Test OK!" << std::endl;
    return true;
@@ -332,10 +314,6 @@ int main ()
          return 1;
       if(test::vector_test<MyCopyDeque>())
          return 1;
-      if(!test::default_init_test< deque<int, test::default_init_allocator<int> > >()){
-         std::cerr << "Default init test failed" << std::endl;
-         return 1;
-      }
    }
 
    const test::EmplaceOptions Options = (test::EmplaceOptions)(test::EMPLACE_BACK | test::EMPLACE_FRONT | test::EMPLACE_BEFORE);

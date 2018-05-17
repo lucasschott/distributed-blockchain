@@ -45,11 +45,10 @@
 
 #include "jam.h"
 #include "regexp.h"
-
 #include <stdio.h>
 #include <ctype.h>
 #ifndef ultrix
-# include <stdlib.h>
+    #include <stdlib.h>
 #endif
 #include <string.h>
 

@@ -24,7 +24,8 @@
 #include <boost/interprocess/detail/config_begin.hpp>
 #include <boost/interprocess/detail/workaround.hpp>
 
-#include <boost/interprocess/detail/os_thread_functions.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/thread/xtime.hpp>
 #include "boost_interprocess_check.hpp"
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/interprocess/sync/sharable_lock.hpp>
@@ -40,7 +41,7 @@ void plain_exclusive(void *arg, SM &sm)
 {
    data<SM> *pdata = static_cast<data<SM>*>(arg);
    boost::interprocess::scoped_lock<SM> l(sm);
-   boost::interprocess::ipcdetail::thread_sleep((1000*3*BaseSeconds));
+   boost::thread::sleep(xsecs(3*BaseSeconds));
    shared_val += 10;
    pdata->m_value = shared_val;
 }
@@ -51,7 +52,7 @@ void plain_shared(void *arg, SM &sm)
    data<SM> *pdata = static_cast<data<SM>*>(arg);
    boost::interprocess::sharable_lock<SM> l(sm);
    if(pdata->m_secs){
-      boost::interprocess::ipcdetail::thread_sleep((1000*pdata->m_secs*BaseSeconds));
+      boost::thread::sleep(xsecs(pdata->m_secs*BaseSeconds));
    }
    pdata->m_value = shared_val;
 }
@@ -62,7 +63,7 @@ void try_exclusive(void *arg, SM &sm)
    data<SM> *pdata = static_cast<data<SM>*>(arg);
    boost::interprocess::scoped_lock<SM> l(sm, boost::interprocess::defer_lock);
    if (l.try_lock()){
-      boost::interprocess::ipcdetail::thread_sleep((1000*3*BaseSeconds));
+      boost::thread::sleep(xsecs(3*BaseSeconds));
       shared_val += 10;
       pdata->m_value = shared_val;
    }
@@ -75,7 +76,7 @@ void try_shared(void *arg, SM &sm)
    boost::interprocess::sharable_lock<SM> l(sm, boost::interprocess::defer_lock);
    if (l.try_lock()){
       if(pdata->m_secs){
-         boost::interprocess::ipcdetail::thread_sleep((1000*pdata->m_secs*BaseSeconds));
+         boost::thread::sleep(xsecs(pdata->m_secs*BaseSeconds));
       }
       pdata->m_value = shared_val;
    }
@@ -89,7 +90,7 @@ void timed_exclusive(void *arg, SM &sm)
    boost::interprocess::scoped_lock<SM>
       l (sm, boost::interprocess::defer_lock);
    if (l.timed_lock(pt)){
-      boost::interprocess::ipcdetail::thread_sleep((1000*3*BaseSeconds));
+      boost::thread::sleep(xsecs(3*BaseSeconds));
       shared_val += 10;
       pdata->m_value = shared_val;
    }
@@ -104,7 +105,7 @@ void timed_shared(void *arg, SM &sm)
       l(sm, boost::interprocess::defer_lock);
    if (l.timed_lock(pt)){
       if(pdata->m_secs){
-         boost::interprocess::ipcdetail::thread_sleep((1000*pdata->m_secs*BaseSeconds));
+         boost::thread::sleep(xsecs(pdata->m_secs*BaseSeconds));
       }
       pdata->m_value = shared_val;
    }
@@ -122,32 +123,28 @@ void test_plain_sharable_mutex()
       data<SM> e2(2);
 
       // Writer one launches, holds the lock for 3*BaseSeconds seconds.
-      boost::interprocess::ipcdetail::OS_thread_t tw1;
-      boost::interprocess::ipcdetail::thread_launch(tw1, thread_adapter<SM>(plain_exclusive, &e1, mtx));
+      boost::thread tw1(thread_adapter<SM>(plain_exclusive, &e1, mtx));
 
       // Writer two launches, tries to grab the lock, "clearly"
       //  after Writer one will already be holding it.
-      boost::interprocess::ipcdetail::thread_sleep((1000*1*BaseSeconds));
-      boost::interprocess::ipcdetail::OS_thread_t tw2;
-      boost::interprocess::ipcdetail::thread_launch(tw2, thread_adapter<SM>(plain_exclusive, &e2, mtx));
+      boost::thread::sleep(xsecs(1*BaseSeconds));
+      boost::thread tw2(thread_adapter<SM>(plain_exclusive, &e2, mtx));
 
       // Reader one launches, "clearly" after writer two, and "clearly"
       //   while writer 1 still holds the lock
-      boost::interprocess::ipcdetail::thread_sleep((1000*1*BaseSeconds));
-      boost::interprocess::ipcdetail::OS_thread_t thr1;
-      boost::interprocess::ipcdetail::thread_launch(thr1, thread_adapter<SM>(plain_shared,&s1, mtx));
-      boost::interprocess::ipcdetail::OS_thread_t thr2;
-      boost::interprocess::ipcdetail::thread_launch(thr2, thread_adapter<SM>(plain_shared,&s2, mtx));
+      boost::thread::sleep(xsecs(1*BaseSeconds));
+      boost::thread thr1(thread_adapter<SM>(plain_shared,&s1, mtx));
+      boost::thread thr2(thread_adapter<SM>(plain_shared,&s2, mtx));
 
-      boost::interprocess::ipcdetail::thread_join(thr2);
-      boost::interprocess::ipcdetail::thread_join(thr1);
-      boost::interprocess::ipcdetail::thread_join(tw2);
-      boost::interprocess::ipcdetail::thread_join(tw1);
+      thr2.join();
+      thr1.join();
+      tw2.join();
+      tw1.join();
 
       //We can only assure that the writer will be first
-      BOOST_INTERPROCESS_CHECK(e1.m_value == 10);
+      BOOST_INTERPROCES_CHECK(e1.m_value == 10);
       //A that we will execute all
-      BOOST_INTERPROCESS_CHECK(s1.m_value == 20 || s2.m_value == 20 || e2.m_value == 20);
+      BOOST_INTERPROCES_CHECK(s1.m_value == 20 || s2.m_value == 20 || e2.m_value == 20);
    }
 
    {
@@ -160,30 +157,25 @@ void test_plain_sharable_mutex()
       data<SM> e2(2);
 
       //We launch 2 readers, that will block for 3*BaseTime seconds
-      boost::interprocess::ipcdetail::OS_thread_t thr1;
-      boost::interprocess::ipcdetail::thread_launch(thr1, thread_adapter<SM>(plain_shared,&s1, mtx));
-      boost::interprocess::ipcdetail::OS_thread_t thr2;
-      boost::interprocess::ipcdetail::thread_launch(thr2, thread_adapter<SM>(plain_shared,&s2, mtx));
+      boost::thread thr1(thread_adapter<SM>(plain_shared,&s1, mtx));
+      boost::thread thr2(thread_adapter<SM>(plain_shared,&s2, mtx));
 
       //Make sure they try to hold the sharable lock
-      boost::interprocess::ipcdetail::thread_sleep((1000*1*BaseSeconds));
+      boost::thread::sleep(xsecs(1*BaseSeconds));
 
       // We launch two writers, that should block until the readers end
-      boost::interprocess::ipcdetail::OS_thread_t tw1;
-      boost::interprocess::ipcdetail::thread_launch(tw1, thread_adapter<SM>(plain_exclusive,&e1, mtx));
+      boost::thread tw1(thread_adapter<SM>(plain_exclusive,&e1, mtx));
+      boost::thread tw2(thread_adapter<SM>(plain_exclusive,&e2, mtx));
 
-      boost::interprocess::ipcdetail::OS_thread_t tw2;
-      boost::interprocess::ipcdetail::thread_launch(tw2, thread_adapter<SM>(plain_exclusive,&e2, mtx));
-
-      boost::interprocess::ipcdetail::thread_join(thr2);
-      boost::interprocess::ipcdetail::thread_join(thr1);
-      boost::interprocess::ipcdetail::thread_join(tw2);
-      boost::interprocess::ipcdetail::thread_join(tw1);
+      thr2.join();
+      thr1.join();
+      tw2.join();
+      tw1.join();
 
       //We can only assure that the shared will finish first...
-      BOOST_INTERPROCESS_CHECK(s1.m_value == 0 || s2.m_value == 0);
+      BOOST_INTERPROCES_CHECK(s1.m_value == 0 || s2.m_value == 0);
       //...and writers will be mutually excluded after readers
-      BOOST_INTERPROCESS_CHECK((e1.m_value == 10 && e2.m_value == 20) ||
+      BOOST_INTERPROCES_CHECK((e1.m_value == 10 && e2.m_value == 20) ||
              (e1.m_value == 20 && e2.m_value == 10) );
    }
 }
@@ -202,26 +194,24 @@ void test_try_sharable_mutex()
    shared_val = 0;
 
    // Writer one launches, holds the lock for 3*BaseSeconds seconds.
-   boost::interprocess::ipcdetail::OS_thread_t tw1;
-   boost::interprocess::ipcdetail::thread_launch(tw1, thread_adapter<SM>(try_exclusive,&e1,mtx));
+
+   boost::thread tw1(thread_adapter<SM>(try_exclusive,&e1,mtx));
 
    // Reader one launches, "clearly" after writer #1 holds the lock
    //   and before it releases the lock.
-   boost::interprocess::ipcdetail::thread_sleep((1000*1*BaseSeconds));
-   boost::interprocess::ipcdetail::OS_thread_t thr1;
-   boost::interprocess::ipcdetail::thread_launch(thr1, thread_adapter<SM>(try_shared,&s1,mtx));
+   boost::thread::sleep(xsecs(1*BaseSeconds));
+   boost::thread thr1(thread_adapter<SM>(try_shared,&s1,mtx));
 
    // Writer two launches in the same timeframe.
-   boost::interprocess::ipcdetail::OS_thread_t tw2;
-   boost::interprocess::ipcdetail::thread_launch(tw2, thread_adapter<SM>(try_exclusive,&e2,mtx));
+   boost::thread tw2(thread_adapter<SM>(try_exclusive,&e2,mtx));
 
-   boost::interprocess::ipcdetail::thread_join(tw2);
-   boost::interprocess::ipcdetail::thread_join(thr1);
-   boost::interprocess::ipcdetail::thread_join(tw1);
+   tw2.join();
+   thr1.join();
+   tw1.join();
 
-   BOOST_INTERPROCESS_CHECK(e1.m_value == 10);
-   BOOST_INTERPROCESS_CHECK(s1.m_value == -1);        // Try would return w/o waiting
-   BOOST_INTERPROCESS_CHECK(e2.m_value == -1);        // Try would return w/o waiting
+   BOOST_INTERPROCES_CHECK(e1.m_value == 10);
+   BOOST_INTERPROCES_CHECK(s1.m_value == -1);        // Try would return w/o waiting
+   BOOST_INTERPROCES_CHECK(e2.m_value == -1);        // Try would return w/o waiting
 }
 
 template<typename SM>
@@ -238,36 +228,31 @@ void test_timed_sharable_mutex()
    shared_val = 0;
 
    // Writer one will hold the lock for 3*BaseSeconds seconds.
-   boost::interprocess::ipcdetail::OS_thread_t tw1;
-   boost::interprocess::ipcdetail::thread_launch(tw1, thread_adapter<SM>(timed_exclusive,&e1,mtx));
+   boost::thread tw1(thread_adapter<SM>(timed_exclusive,&e1,mtx));
 
-   boost::interprocess::ipcdetail::thread_sleep((1000*1*BaseSeconds));
+   boost::thread::sleep(xsecs(1*BaseSeconds));
    // Writer two will "clearly" try for the lock after the readers
    //  have tried for it.  Writer will wait up 1*BaseSeconds seconds for the lock.
    //  This write will fail.
-   boost::interprocess::ipcdetail::OS_thread_t tw2;
-   boost::interprocess::ipcdetail::thread_launch(tw2, thread_adapter<SM>(timed_exclusive,&e2,mtx));
+   boost::thread tw2(thread_adapter<SM>(timed_exclusive,&e2,mtx));
 
    // Readers one and two will "clearly" try for the lock after writer
    //   one already holds it.  1st reader will wait 1*BaseSeconds seconds, and will fail
    //   to get the lock.  2nd reader will wait 3*BaseSeconds seconds, and will get
    //   the lock.
 
-   boost::interprocess::ipcdetail::OS_thread_t thr1;
-   boost::interprocess::ipcdetail::thread_launch(thr1, thread_adapter<SM>(timed_shared,&s1,mtx));
+   boost::thread thr1(thread_adapter<SM>(timed_shared,&s1,mtx));
+   boost::thread thr2(thread_adapter<SM>(timed_shared,&s2,mtx));
 
-   boost::interprocess::ipcdetail::OS_thread_t thr2;
-   boost::interprocess::ipcdetail::thread_launch(thr2, thread_adapter<SM>(timed_shared,&s2,mtx));
+   tw1.join();
+   thr1.join();
+   thr2.join();
+   tw2.join();
 
-   boost::interprocess::ipcdetail::thread_join(tw1);
-   boost::interprocess::ipcdetail::thread_join(thr1);
-   boost::interprocess::ipcdetail::thread_join(thr2);
-   boost::interprocess::ipcdetail::thread_join(tw2);
-
-   BOOST_INTERPROCESS_CHECK(e1.m_value == 10);
-   BOOST_INTERPROCESS_CHECK(s1.m_value == -1);
-   BOOST_INTERPROCESS_CHECK(s2.m_value == 10);
-   BOOST_INTERPROCESS_CHECK(e2.m_value == -1);
+   BOOST_INTERPROCES_CHECK(e1.m_value == 10);
+   BOOST_INTERPROCES_CHECK(s1.m_value == -1);
+   BOOST_INTERPROCES_CHECK(s2.m_value == 10);
+   BOOST_INTERPROCES_CHECK(e2.m_value == -1);
 }
 
 template<typename SM>

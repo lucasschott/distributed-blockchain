@@ -159,13 +159,13 @@ private:
 
     typedef boost::geometry::strategy::transform::map_transformer
         <
-            double, 2, 2,
+            point_2d, wxPoint,
             true, true
         > map_transformer_type;
 
     typedef boost::geometry::strategy::transform::inverse_transformer
         <
-            double, 2, 2
+            wxPoint, point_2d
         > inverse_transformer_type;
 
     boost::shared_ptr<map_transformer_type> m_map_transformer;

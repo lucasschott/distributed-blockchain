@@ -19,15 +19,15 @@
 
 namespace
 {
-    template <typename CharT>
-    void test_istream_range_impl()
+    // Test an integer range with a step size of 1.
+    void test_istream_range()
     {
-        std::basic_stringstream<CharT> s;
+        std::stringstream s;
         std::vector<int> reference;
         for (int i = 0; i < 10; ++i)
         {
             reference.push_back(i);
-            s << i << CharT(' ');
+            s << i << " ";
         }
 
         std::vector<int> target;
@@ -35,13 +35,6 @@ namespace
 
         BOOST_CHECK_EQUAL_COLLECTIONS( reference.begin(), reference.end(),
             target.begin(), target.end() );
-    }
-    
-    // Test an istream range.
-    void test_istream_range()
-    {
-        test_istream_range_impl<char>();
-        test_istream_range_impl<wchar_t>();
     }
 
 } // namespace anonymous namespace

@@ -17,8 +17,7 @@
 //#include <pch.hpp> // include directory libs/math/src/tr1/ is needed.
 
 #include <boost/math/concepts/real_concept.hpp> // for real_concept
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // Boost.Test
+#include <boost/test/test_exec_monitor.hpp> // Boost.Test
 #include <boost/test/floating_point_comparison.hpp>
 
 #include <boost/math/distributions/inverse_gaussian.hpp>
@@ -162,7 +161,7 @@ void test_spots(RealType)
     static_cast<RealType>(10), tolerance);
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
   using boost::math::inverse_gaussian;
   using boost::math::inverse_gaussian_distribution;
@@ -335,8 +334,8 @@ BOOST_AUTO_TEST_CASE( test_main )
     "to pass.</note>" << std::cout;
 #endif
   /*      */
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

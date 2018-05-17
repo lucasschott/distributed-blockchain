@@ -29,8 +29,7 @@
 #include <boost/math/policies/policy.hpp>
   using boost::math::policies::policy;
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <boost/test/floating_point_comparison.hpp> // for BOOST_CHECK_CLOSE_FRACTION, BOOST_CHECK_EQUAL...
 
 #include <iostream>
@@ -171,7 +170,7 @@ void test_spots(RealType)
 
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
   // Basic sanity-check spot values.
 
@@ -189,8 +188,8 @@ BOOST_AUTO_TEST_CASE( test_main )
         "not available at all, or because they are too inaccurate for these tests "
         "to pass.</note>" << std::cout;
   #endif
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

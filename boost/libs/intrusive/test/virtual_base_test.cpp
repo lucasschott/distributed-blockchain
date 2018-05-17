@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// (C) Copyright Ion Gaztanaga  2007-2013
+// (C) Copyright Ion Gaztanaga  2007-2012
 //
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -57,7 +57,6 @@ typedef list<MyClass, MemberHook> List;
 
 int main()
 {
-   #ifndef _MSC_VER
    typedef std::vector<MyClass>::iterator VectIt;
    typedef std::vector<MyClass>::reverse_iterator VectRit;
 
@@ -82,6 +81,6 @@ int main()
          if(&*list_it  != &*vect_it)
             return 1;
    }
-   #endif
+
    return 0;
 }

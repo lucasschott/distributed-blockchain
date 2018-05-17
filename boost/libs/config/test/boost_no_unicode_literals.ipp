@@ -12,8 +12,7 @@
 
 namespace boost_no_cxx11_unicode_literals {
 
-template <class CharT>
-void quiet_warning(const CharT*){}
+void quiet_warning(const char*){}
 
 int test()
 {
@@ -21,8 +20,6 @@ int test()
   const char16_t* c16 = u"";
   const char32_t* c32 = U"";
   quiet_warning(c8);
-  quiet_warning(c16);
-  quiet_warning(c32);
   return 0;
 }
 

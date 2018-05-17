@@ -8,9 +8,9 @@
 
 # boostinspect:notab - Tabs are required for the Makefile.
 
-B2=""
+BJAM=""
 TOOLSET=""
-B2_CONFIG=""
+BJAM_CONFIG=""
 
 for option
 do
@@ -42,7 +42,7 @@ Defaults for the options are specified in brackets.
 
 Configuration:
   -h, --help                display this help and exit
-  --with-b2=B2              use existing Boost.Build executable (b2)
+  --with-bjam=BJAM          use existing Boost.Jam executable (bjam)
                             [automatically built]
   --with-toolset=TOOLSET    use specific Boost.Build toolset
                             [automatically detected]
@@ -92,8 +92,8 @@ esac
 
 rm -f config.log
 
-# Build b2
-if test "x$B2" = x; then
+# Build bjam
+if test "x$BJAM" = x; then
   echo -n "Bootstrapping the build engine with toolset $TOOLSET... "
   pwd=`pwd`
   (cd "$my_dir/engine" && ./build.sh "$TOOLSET") > bootstrap.log 2>&1
@@ -105,9 +105,9 @@ if test "x$B2" = x; then
   fi
   cd "$pwd"
   arch=`cd $my_dir/engine && ./bootstrap/jam0 -d0 -f build.jam --toolset=$TOOLSET --toolset-root= --show-locate-target && cd ..`
-  B2="$my_dir/engine/$arch/b2"
-  echo "engine/$arch/b2"
-  cp "$B2" .
+  BJAM="$my_dir/engine/$arch/b2"
+  echo "engine/$arch/bjam"
+  cp "$BJAM" .
   cp "$my_dir/engine/$arch/bjam" .
 fi
 

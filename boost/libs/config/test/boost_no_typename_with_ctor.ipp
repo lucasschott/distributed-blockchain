@@ -26,7 +26,6 @@ typename T::type f() {
 
 int test() {
   A a = f<B<A> >();
-  (void)a;
   return 0;
 }
 

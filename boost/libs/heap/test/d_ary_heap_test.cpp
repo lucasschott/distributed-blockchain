@@ -50,12 +50,6 @@ void run_d_ary_heap_test(void)
 
         run_stable_heap_tests<stable_pri_queue>();
     }
-
-#if !defined(BOOST_NO_CXX11_RVALUE_REFERENCES) && !defined(BOOST_NO_CXX11_VARIADIC_TEMPLATES)
-    cmpthings ord;
-    boost::heap::d_ary_heap<thing, boost::heap::arity<D>, boost::heap::compare<cmpthings>, boost::heap::stable<stable> > vpq(ord);
-    vpq.emplace(5, 6, 7);
-#endif
 }
 
 
@@ -125,11 +119,4 @@ BOOST_AUTO_TEST_CASE( d_ary_heap_compare_lookup_test )
                                     boost::heap::compare<less_with_T>,
                                     boost::heap::allocator<std::allocator<int> > > pri_queue;
     run_common_heap_tests<pri_queue>();
-}
-
-
-BOOST_AUTO_TEST_CASE( d_ary_heap_leak_test )
-{
-    typedef boost::heap::d_ary_heap<boost::shared_ptr<int>, boost::heap::arity<2> > pri_queue;
-    run_leak_check_test<pri_queue>();
 }

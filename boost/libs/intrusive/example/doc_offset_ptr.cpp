@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////
 //
-// (C) Copyright Ion Gaztanaga  2006-2013
+// (C) Copyright Ion Gaztanaga  2006-2012
 //
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
@@ -9,18 +9,6 @@
 // See http://www.boost.org/libs/intrusive for documentation.
 //
 /////////////////////////////////////////////////////////////////////////////
-
-#include <boost/config.hpp>
-
-#ifdef BOOST_NO_EXCEPTIONS
-
-//Interprocess does not support BOOST_NO_EXCEPTIONS so nothing to test here
-int main()
-{
-   return 0;
-}
-
-#else //!BOOST_NO_EXCEPTIONS
 
 //This is needed to allow concurrent test execution in
 //several platforms. The shared memory must be unique
@@ -112,6 +100,3 @@ int main()
    return 0;
 }
 //]
-
-#endif //BOOST_NO_EXCEPTIONS
-

@@ -26,8 +26,7 @@ using ::boost::math::concepts::real_concept;
 #include <boost/math/distributions/bernoulli.hpp> // for bernoulli_distribution
 using boost::math::bernoulli_distribution;
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <boost/test/floating_point_comparison.hpp> // for BOOST_CHECK_CLOSE_FRACTION, BOOST_CHECK_EQUAL...
 
 #include <iostream>
@@ -261,7 +260,7 @@ void test_spots(RealType)
 
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
    BOOST_MATH_CONTROL_FP;
    // Check that can generate bernoulli distribution using both convenience methods:
@@ -296,7 +295,8 @@ BOOST_AUTO_TEST_CASE( test_main )
   test_spots(boost::math::concepts::real_concept(0.)); // Test real concept.
 #endif
 
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

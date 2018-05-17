@@ -167,26 +167,25 @@
         </simpara>
       </listitem>
       <listitem>
-        <para/>
-      </listitem>
-      <listitem>
-<programlisting><phrase role="keyword">int</phrase> <phrase role="identifier">main</phrase><phrase role="special">()</phrase> <phrase role="special">{}</phrase></programlisting>
-      </listitem>
-      <listitem>
         <simpara>
-          Paragraphs 1
+          <para/>
         </simpara>
+      </listitem>
+      <listitem>
         <simpara>
-          Paragraphs 2
+<programlisting><phrase role="keyword">int</phrase> <phrase role="identifier">main</phrase><phrase role="special">()</phrase> <phrase role="special">{}</phrase></programlisting>
+        </simpara>
+      </listitem>
+      <listitem>
+        <simpara>
+          <para>
+            Paragraphs 1
+          </para>
+          <para>
+            Paragraphs 2
+          </para>
         </simpara>
       </listitem>
     </itemizedlist>
-  </section>
-  <section id="templates.escaped_templates">
-    <title><link linkend="templates.escaped_templates">Escaped templates</link></title>
-    <para>
-      <thingbob>Not real boostbook</thingbob> <thingbob>Also not real boostbook</thingbob>
-      <thingbob>More fake boostbook</thingbob> <thingbob>Final fake boostbook</thingbob>
-    </para>
   </section>
 </article>

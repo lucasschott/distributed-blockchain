@@ -45,7 +45,6 @@
 #include <boost/geometry/algorithms/simplify.hpp>
 #include <boost/geometry/algorithms/transform.hpp>
 #include <boost/geometry/algorithms/unique.hpp>
-#include <boost/geometry/io/wkt/wkt.hpp>
 #include <boost/geometry/multi/algorithms/append.hpp>
 #include <boost/geometry/multi/algorithms/area.hpp>
 #include <boost/geometry/multi/algorithms/centroid.hpp>
@@ -66,7 +65,6 @@
 #include <boost/geometry/multi/algorithms/simplify.hpp>
 #include <boost/geometry/multi/algorithms/transform.hpp>
 #include <boost/geometry/multi/algorithms/unique.hpp>
-#include <boost/geometry/multi/io/wkt/wkt.hpp>
 #include <boost/geometry/strategies/strategies.hpp>
 
 #include "text_outputter.hpp"
@@ -134,7 +132,6 @@ DECLARE_UNARY_ALGORITHM(simplify)
 DECLARE_BINARY_ALGORITHM(transform)
 DECLARE_UNARY_ALGORITHM(unique)
 DECLARE_BINARY_ALGORITHM(within)
-DECLARE_UNARY_ALGORITHM(wkt)
 
 
 template <template <typename> class Dispatcher, typename Outputter, typename G>
@@ -270,7 +267,6 @@ void support_status()
     test_binary_algorithm<transform, all_types, all_types, OutputFactory>("transform");
     test_unary_algorithm<unique, all_types, OutputFactory>("unique");
     test_binary_algorithm<within, all_types, all_types, OutputFactory>("within");
-    test_unary_algorithm<wkt, all_types, OutputFactory>("wkt");
 }
 
 

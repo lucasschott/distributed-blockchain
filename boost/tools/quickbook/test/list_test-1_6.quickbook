@@ -74,17 +74,9 @@ Markup in list:
 *   ["Quoted]
 *   [footnote Footnote]
 *   [table [[Heading]][[Cell]]]
-    Some text.
-*   [section Doesn't expand]
-    Blah, blah.
-    [endsect]
+*   [heading The heading for a list item]
 
-* Paragraph cheat 1.
-  [block]
-  Paragraph cheat 2.
-* Paragraph cheat 3.
-  [block]
-  Paragraph cheat 4.
+    The content of the list item.
 
 Don't end list with comment 1:
 
@@ -116,5 +108,40 @@ Don't end list with comment 2:
 [section Nested section]
 * Two
 [endsect]
+[endsect]
 
+[section Paragraphs in list items]
+
+* A1
+
+  A2
+
+* B1
+  * C1
+
+   C2
+
+  B2
+
+* D1
+    * E1
+
+     E2
+
+    E3
+
+   D2
+
+[endsect]
+
+[section Indented code blocks in lists]
+
+* A
+
+    B
+  C
+* D
+
+    E
+* F
 [endsect]

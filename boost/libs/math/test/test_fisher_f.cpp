@@ -14,8 +14,7 @@ using ::boost::math::concepts::real_concept;
 #include <boost/math/distributions/fisher_f.hpp> // for fisher_f_distribution
 using boost::math::fisher_f_distribution;
 
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // for test_main
+#include <boost/test/test_exec_monitor.hpp> // for test_main
 #include <boost/test/floating_point_comparison.hpp> // for BOOST_CHECK_CLOSE
 #include "test_out_of_range.hpp"
 
@@ -503,7 +502,7 @@ void test_spots(RealType)
    check_out_of_range<fisher_f_distribution<RealType> >(2, 3);
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
 
   // Check that can generate fisher distribution using the two convenience methods:
@@ -522,8 +521,8 @@ BOOST_AUTO_TEST_CASE( test_main )
   test_spots(boost::math::concepts::real_concept(0.)); // Test real concept.
 #endif
 #endif
-  
-} // BOOST_AUTO_TEST_CASE( test_main )
+  return 0;
+} // int test_main(int, char* [])
 
 /*
 

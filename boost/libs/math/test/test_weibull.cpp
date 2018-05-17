@@ -14,8 +14,7 @@
 
 
 #include <boost/math/concepts/real_concept.hpp> // for real_concept
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp> // Boost.Test
+#include <boost/test/test_exec_monitor.hpp> // Boost.Test
 #include <boost/test/floating_point_comparison.hpp>
 
 #include <boost/math/distributions/weibull.hpp>
@@ -347,7 +346,7 @@ void test_spots(RealType)
    check_out_of_range<weibull_distribution<RealType> >(1, 1);
 } // template <class RealType>void test_spots(RealType)
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main(int, char* [])
 {
 
   // Check that can construct weibull distribution using the two convenience methods:
@@ -371,8 +370,8 @@ BOOST_AUTO_TEST_CASE( test_main )
       "to pass.</note>" << std::cout;
 #endif
 
-   
-} // BOOST_AUTO_TEST_CASE( test_main )
+   return 0;
+} // int test_main(int, char* [])
 
 /*
 

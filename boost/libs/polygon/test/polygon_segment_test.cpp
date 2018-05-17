@@ -70,10 +70,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(segment_traits_test, T, test_types) {
 
 template <typename T>
 struct Segment {
-  typedef T coordinate_type;
-  typedef point_data<T> point_type;
-  point_type p0;
-  point_type p1;
+  point_data<T> p0;
+  point_data<T> p1;
 };
 
 namespace boost {
@@ -95,7 +93,6 @@ namespace polygon {
 
   template <typename T>
   struct segment_mutable_traits< Segment<T> > {
-    typedef T coordinate_type;
     typedef point_data<T> point_type;
 
     static void set(

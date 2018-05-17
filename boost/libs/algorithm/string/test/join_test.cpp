@@ -13,8 +13,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 // Include unit test framework
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <vector>
@@ -71,8 +70,10 @@ void join_test()
     BOOST_CHECK( equals(join_if(tokens3, "-", is_not_empty), "") );
 }
 
-
-BOOST_AUTO_TEST_CASE( test_main )
+// test main 
+int test_main( int, char*[] )
 {
     join_test();
+    
+    return 0;
 }

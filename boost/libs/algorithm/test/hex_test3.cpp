@@ -11,9 +11,7 @@ Try ostream_iterators
 
 #include <boost/config.hpp>
 #include <boost/algorithm/hex.hpp>
-
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <iostream>
@@ -115,10 +113,11 @@ const wchar_t *fromhex_w [] = {
 
 
 
-BOOST_AUTO_TEST_CASE( test_main )
+int test_main( int , char* [] )
 {
   test_to_hex ( tohex );
   test_to_hex ( tohex_w );
   test_from_hex_success ( fromhex );
   test_from_hex_success ( fromhex_w );
+  return 0;
 }

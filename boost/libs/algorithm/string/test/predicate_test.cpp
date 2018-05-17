@@ -11,8 +11,7 @@
 #include <boost/algorithm/string/classification.hpp>
 
 // Include unit test framework
-#define BOOST_TEST_MAIN
-#include <boost/test/unit_test.hpp>
+#include <boost/test/included/test_exec_monitor.hpp>
 
 #include <string>
 #include <vector>
@@ -153,8 +152,11 @@ void classification_test()
 
 #undef TEST_CLASS
 
-BOOST_AUTO_TEST_CASE( test_main )
+// test main 
+int test_main( int, char*[] )
 {
     predicate_test();
     classification_test();
+    
+    return 0;
 }

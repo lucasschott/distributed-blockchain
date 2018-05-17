@@ -10,10 +10,11 @@
 import BoostBuild
 
 # Create a temporary working directory.
-t = BoostBuild.Tester(use_test_config=False)
+t = BoostBuild.Tester()
 
 t.write("c.cpp", "\n")
-t.write("r.cpp", """\
+
+t.write("r.cpp", """
 void helper();
 
 #include <iostream>
@@ -24,11 +25,17 @@ int main( int ac, char * av[] )
        std::cout << av[ i ] << '\\n';
 }
 """)
-t.write("c-f.cpp", "int\n")
-t.write("r-f.cpp", "int main() { return 1; }\n")
 
-t.write("jamroot.jam", "")
-t.write("jamfile.jam", """\
+t.write("c-f.cpp", """
+int
+""")
+
+t.write("r-f.cpp", """
+int main() { return 1; }
+""")
+
+
+t.write("jamfile.jam", """
 import testing ;
 compile c.cpp ;
 compile-fail c-f.cpp ;
@@ -36,8 +43,11 @@ run r.cpp libs//helper : foo bar ;
 run-fail r-f.cpp ;
 """)
 
-t.write("libs/jamfile.jam", "lib helper : helper.cpp ;")
-t.write("libs/helper.cpp", """\
+t.write("libs/jamfile.jam", """
+lib helper : helper.cpp ;
+""")
+
+t.write("libs/helper.cpp", """
 void
 #if defined(_WIN32)
 __declspec(dllexport)
@@ -45,8 +55,10 @@ __declspec(dllexport)
 helper() {}
 """)
 
+t.write("jamroot.jam", "")
+
 # First test that when outcomes are expected, all .test files are created.
-t.run_build_system(["hardcode-dll-paths=false"], stderr=None, status=None)
+t.run_build_system("hardcode-dll-paths=false", stderr=None, status=None)
 t.expect_addition("bin/c.test/$toolset/debug/c.test")
 t.expect_addition("bin/c-f.test/$toolset/debug/c-f.test")
 t.expect_addition("bin/r.test/$toolset/debug/r.test")
@@ -57,7 +69,7 @@ t.expect_content("bin/r.test/$toolset/debug/r.output",
                  "foo\nbar\n*\nEXIT STATUS: 0*\n", True)
 
 # Test that input file is handled as well.
-t.write("r.cpp", """\
+t.write("r.cpp", """
 #include <iostream>
 #include <fstream>
 int main( int ac, char * av[] )
@@ -72,7 +84,7 @@ int main( int ac, char * av[] )
 
 t.write("dir/input.txt", "test input")
 
-t.write("jamfile.jam", """\
+t.write("jamfile.jam", """
 import testing ;
 compile c.cpp ;
 obj c-obj : c.cpp ;
@@ -83,19 +95,18 @@ time execution : r ;
 time compilation : c-obj ;
 """)
 
-t.run_build_system(["hardcode-dll-paths=false"])
-t.expect_content("bin/r.test/$toolset/debug/r.output", """\
-test input
-EXIT STATUS: 0
-""")
+t.run_build_system('hardcode-dll-paths=false')
+t.expect_content("bin/r.test/$toolset/debug/r.output",
+                 "test input\nEXIT STATUS: 0\n")
 
 t.expect_addition('bin/$toolset/debug/execution.time')
 t.expect_addition('bin/$toolset/debug/compilation.time')
 
 # Make sure test failures are detected. Reverse expectation and see if .test
 # files are created or not.
-t.write("jamfile.jam", """\
+t.write("jamfile.jam", """
 import testing ;
+
 compile-fail c.cpp ;
 compile c-f.cpp ;
 run-fail r.cpp : : dir/input.txt ;
@@ -104,7 +115,7 @@ run r-f.cpp ;
 
 t.touch(BoostBuild.List("c.cpp c-f.cpp r.cpp r-f.cpp"))
 
-t.run_build_system(["hardcode-dll-paths=false"], stderr=None, status=1)
+t.run_build_system("hardcode-dll-paths=false", stderr=None, status=1)
 t.expect_removal("bin/c.test/$toolset/debug/c.test")
 t.expect_removal("bin/c-f.test/$toolset/debug/c-f.test")
 t.expect_removal("bin/r.test/$toolset/debug/r.test")

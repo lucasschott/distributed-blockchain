@@ -17,7 +17,6 @@ namespace boost_no_cxx11_allocator {
 int test()
 {
    std::pointer_traits<char*>* p = 0;
-   (void) p;
    //std::pointer_safety s = std::relaxed;
 
    //char* (*l_undeclare_reachable)(char *p) = std::undeclare_reachable;
@@ -29,9 +28,6 @@ int test()
    std::uses_allocator<int, std::allocator<int> > ua;
    std::allocator_traits<std::allocator<int> > at;
 
-   (void)aat;
-   (void)ua;
-   (void)at;
    return 0;
 }
 

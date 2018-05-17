@@ -5,15 +5,18 @@
 
 # This module defines rules to apply an XSLT stylesheet to an XML file using the
 # xsltproc driver, part of libxslt.
+#
+# Note: except for 'init', this modules does not provide any rules for end
+# users.
 
-import common ;
 import feature ;
-import modules ;
-import os ;
-import path ;
 import regex ;
 import sequence ;
-
+import common ;
+import os ;
+import modules ;
+import path ;
+import errors ;
 
 feature.feature xsl:param : : free ;
 feature.feature xsl:path : : free ;
@@ -33,7 +36,6 @@ rule init ( xsltproc ? )
     }
 }
 
-
 rule freeze-config ( )
 {
     if ! $(.config-frozen)
@@ -46,49 +48,40 @@ rule freeze-config ( )
     }
 }
 
-
-rule modify-config ( )
+rule modify-config
 {
     if $(.config-frozen)
     {
-        import errors ;
-        errors.user-error
-            "xsltproc: Cannot change xsltproc command after it has been used." ;
+        errors.user-error "xsltproc: Cannot change xsltproc command after it has been used." ;
     }
 }
-
 
 rule check-xsltproc ( )
 {
     if $(.xsltproc)
     {
-        local status = [ SHELL "\"$(.xsltproc)\" -V" : no-output : exit-status ]
-            ;
-        if $(status[2]) != 0
+        local status = [ SHELL "\"$(.xsltproc)\" -V" : no-output : exit-status ] ;
+        if $(status[2]) != "0"
         {
-            import errors ;
             errors.user-error "xsltproc: Could not run \"$(.xsltproc)\" -V." ;
         }
     }
 }
 
-
 # Returns a non-empty string if a cygwin xsltproc binary was specified.
-#
 rule is-cygwin ( )
 {
     freeze-config ;
     return $(.is-cygwin) ;
 }
 
-
 rule .is-cygwin ( xsltproc )
 {
     if [ os.on-windows ]
     {
         local file = [ path.make [ modules.binding $(__name__) ] ] ;
-        local dir = [ path.native [ path.join [ path.parent $(file) ] xsltproc ]
-            ] ;
+        local dir = [ path.native
+                      [ path.join [ path.parent $(file) ] xsltproc ] ] ;
         if [ os.name ] = CYGWIN
         {
             dir = $(dir:W) ;
@@ -103,11 +96,12 @@ rule .is-cygwin ( xsltproc )
     }
 }
 
-
 rule compute-xslt-flags ( target : properties * )
 {
+    local flags ;
+
     # Raw flags.
-    local flags = [ feature.get-values <flags> : $(properties) ] ;
+    flags += [ feature.get-values <flags> : $(properties) ] ;
 
     # Translate <xsl:param> into command line flags.
     for local param in [ feature.get-values <xsl:param> : $(properties) ]
@@ -124,8 +118,7 @@ rule compute-xslt-flags ( target : properties * )
 
     # Take care of implicit dependencies.
     local other-deps ;
-    for local dep in [ feature.get-values <implicit-dependency> : $(properties)
-        ]
+    for local dep in [ feature.get-values <implicit-dependency> : $(properties) ]
     {
         other-deps += [ $(dep:G=).creating-subvariant ] ;
     }
@@ -145,8 +138,7 @@ rule compute-xslt-flags ( target : properties * )
 }
 
 
-local rule .xsltproc ( target : source stylesheet : properties * : dirname ? :
-    action )
+local rule .xsltproc ( target : source stylesheet : properties * : dirname ? : action )
 {
     freeze-config ;
     STYLESHEET on $(target) = $(stylesheet) ;
@@ -155,8 +147,7 @@ local rule .xsltproc ( target : source stylesheet : properties * : dirname ? :
 
     for local catalog in [ feature.get-values <catalog> : $(properties) ]
     {
-        CATALOG = [ common.variable-setting-command XML_CATALOG_FILES :
-            $(catalog:T) ] ;
+        CATALOG = [ common.variable-setting-command XML_CATALOG_FILES : $(catalog:T) ] ;
     }
 
     if [ os.on-windows ] && ! [ is-cygwin ]
@@ -170,15 +161,13 @@ local rule .xsltproc ( target : source stylesheet : properties * : dirname ? :
 
 rule xslt ( target : source stylesheet : properties * )
 {
-    return [ .xsltproc $(target) : $(source) $(stylesheet) : $(properties) : :
-        xslt-xsltproc ] ;
+    return [ .xsltproc $(target) : $(source) $(stylesheet) : $(properties) : : xslt-xsltproc ] ;
 }
 
 
 rule xslt-dir ( target : source stylesheet : properties * : dirname )
 {
-    return [ .xsltproc $(target) : $(source) $(stylesheet) : $(properties) :
-        $(dirname) : xslt-xsltproc-dir ] ;
+    return [ .xsltproc $(target) : $(source) $(stylesheet) : $(properties) : $(dirname) : xslt-xsltproc-dir ] ;
 }
 
 actions xslt-xsltproc.windows

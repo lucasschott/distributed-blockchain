@@ -1,6 +1,6 @@
 /* Boost.MultiIndex test for safe_mode.
  *
- * Copyright 2003-2013 Joaquin M Lopez Munoz.
+ * Copyright 2003-2008 Joaquin M Lopez Munoz.
  * Distributed under the Boost Software License, Version 1.0.
  * (See accompanying file LICENSE_1_0.txt or copy at
  * http://www.boost.org/LICENSE_1_0.txt)
@@ -15,7 +15,7 @@
 #include "employee.hpp"
 #include "pair_of_ints.hpp"
 #include <stdexcept>
-#include <boost/detail/lightweight_test.hpp>
+#include <boost/test/test_tools.hpp>
 
 using namespace boost::multi_index;
 
@@ -28,8 +28,6 @@ try{
   if(e.error_code!=(err))throw std::runtime_error(\
     "safe mode violation not expected");\
 }
-
-template<typename T> void prevent_unused_var_warning(const T&){}
 
 template<typename Policy>
 static void local_test_safe_mode(
@@ -71,21 +69,21 @@ static void local_test_safe_mode(
     iterator it;
     iterator it2;
     bool b=(it==it2);
-    prevent_unused_var_warning(b);
+    b=true; /* avoid warning about unused var */
   CATCH_SAFE_MODE(safe_mode::invalid_iterator)
 
   TRY_SAFE_MODE
     iterator it=i.begin();
     iterator it2;
     bool b=(it==it2);
-    prevent_unused_var_warning(b);
+    b=true; /* avoid warning about unused var */
   CATCH_SAFE_MODE(safe_mode::invalid_iterator)
 
   TRY_SAFE_MODE
     iterator it=i.begin();
     iterator it2=i2.begin();
     bool b=(it==it2);
-    prevent_unused_var_warning(b);
+    b=true; /* avoid warning about unused var */
   CATCH_SAFE_MODE(safe_mode::not_same_owner)
 
   TRY_SAFE_MODE
@@ -212,7 +210,7 @@ static void local_test_safe_mode(
     iterator it=i3.end();
     i3.clear();
     it=it;
-    BOOST_TEST(it==i3.end());
+    BOOST_CHECK(it==i3.end());
   }
 }
 
@@ -420,7 +418,7 @@ static void test_integral_bimap(BOOST_EXPLICIT_TEMPLATE_TYPE(IntegralBimap))
     bm.insert(value_type(1,1));
     bm.modify(it,increment_first);
     value_type v=*it;
-    prevent_unused_var_warning(v);
+    v.first=0; /* avoid warning about unused var */
   CATCH_SAFE_MODE(safe_mode::invalid_iterator)
 
   TRY_SAFE_MODE
@@ -429,7 +427,7 @@ static void test_integral_bimap(BOOST_EXPLICIT_TEMPLATE_TYPE(IntegralBimap))
     bm.insert(value_type(1,1));
     bm.modify(it,increment_second);
     pair_of_ints v=*it;
-    prevent_unused_var_warning(v);
+    v.first=0; /* avoid warning about unused var */
   CATCH_SAFE_MODE(safe_mode::invalid_iterator)
 }
 

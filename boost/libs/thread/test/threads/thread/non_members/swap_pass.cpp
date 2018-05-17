@@ -15,7 +15,7 @@
 
 // void swap(thread& x, thread& y);
 
-#include <boost/thread/thread_only.hpp>
+#include <boost/thread/thread.hpp>
 #include <new>
 #include <cstdlib>
 #include <cassert>

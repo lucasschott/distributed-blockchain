@@ -111,12 +111,13 @@ class NoeudBloc
                 delete(blockchain);
                 blockchain = newChain;
                 VERB(cout << "le block recu est valide" << endl);
+                pas_valide=0;
             }
             else
             {
                 pas_valide++;
                 VERB(cout << "le block n'est pas valide" << endl);
-                if(pas_valide>3)
+                if(pas_valide>=2)
                 {
                     //TODO ask blockchain
                     pas_valide=0;

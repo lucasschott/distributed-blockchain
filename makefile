@@ -20,10 +20,10 @@ PROG_C = participant
 all: $(PROG_C) $(PROG_S) 
 
 $(PROG_S): server.o distributed_server.o addr_and_hash.o affichage.o transaction.o block.o blockchain.o sha256.o
-	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) RCF/src/RCF/RCF.cpp -I include -I RCF/include -I boost -o $(B_REP)$@
+	$(CC) $(patsubst %,$(O_REP)%,$^) RCF/src/RCF/RCF.cpp -I include -I RCF/include -I boost $(CFLAGS) -o $(B_REP)$@
 
 $(PROG_C): client.o affichage.o addr_and_hash.o
-	$(CC) $(CFLAGS) $(patsubst %,$(O_REP)%,$^) -o $(B_REP)$@
+	$(CC) $(patsubst %,$(O_REP)%,$^) $(CFLAGS) -o $(B_REP)$@
 
 
 server.o: server.cpp client_server.h
@@ -38,7 +38,7 @@ distributed_server.o: distributed_server.cpp distributed_server.h
 RCF.o: ../RCF/src/RCF/RCF.cpp
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< -I include -I RCF/include -I boost -o $(O_REP)$@
+	$(CC) -c $< -I include -I RCF/include -I boost $(CFLAGS) -o $(O_REP)$@
 
 clean:
 	rm -f obj/*.o bin/bloc bin/participant log*
